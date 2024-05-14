@@ -1,0 +1,11 @@
+@FootAnalises_HostAddress = http://localhost:5169
+
+GET {{FootAnalises_HostAddress}}/todos/
+Accept: application/json
+
+###
+
+GET {{FootAnalises_HostAddress}}/todos/1
+Accept: application/json
+
+###

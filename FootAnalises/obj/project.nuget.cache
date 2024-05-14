@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "W7/C3/43Va0OAXZ7QtiWFO/AeRj798YB/AfaEB91QsF48XKhoTRmumB87TKOlMzQOwPeY4SOKgzJ7TCCfyQA1w==",
+  "success": true,
+  "projectFilePath": "D:\\Git\\projetos\\FootyStatsApp\\Footy\\FootAnalises\\FootAnalises.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\tx_ma\\.nuget\\packages\\microsoft.dotnet.ilcompiler\\8.0.4\\microsoft.dotnet.ilcompiler.8.0.4.nupkg.sha512",
+    "C:\\Users\\tx_ma\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.4\\microsoft.net.illink.tasks.8.0.4.nupkg.sha512",
+    "C:\\Users\\tx_ma\\.nuget\\packages\\runtime.win-x64.microsoft.dotnet.ilcompiler\\8.0.4\\runtime.win-x64.microsoft.dotnet.ilcompiler.8.0.4.nupkg.sha512"
+  ],
+  "logs": []
+}
