@@ -34,6 +34,7 @@ namespace Models.Model
             {
                 FundamentosPros.Add(new FundamentoDetalhado
                 {
+                    Id = fundamento.Id,
                     Nome = fundamento.Nome,
                     Errados = equipeDetalhe.Errados,
                     Certos = equipeDetalhe.Certos,
@@ -49,6 +50,7 @@ namespace Models.Model
             {
                 FundamentosContra.Add(new FundamentoDetalhado
                 {
+                    Id = fundamento.Id,
                     Nome = fundamento.Nome,
                     Errados = equipeDetalhe.Errados,
                     Certos = equipeDetalhe.Certos,
@@ -58,12 +60,4 @@ namespace Models.Model
         }
     }
 
-    public class FundamentoDetalhado
-    {
-        public int Id { get; set; }
-        public string Nome { get; set; }
-        public FundamentoDetalhe Errados { get; set; }
-        public FundamentoDetalhe Certos { get; set; }
-        public FundamentoDetalhe Totais { get; set; }
-    }
 }

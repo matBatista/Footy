@@ -2,6 +2,6 @@
 *.exe
 *.dll
 *.pdb
-/FootAnalises/.vs
-/FootAnalises/bin
-/Services/obj
+.vs/
+obj/
+bin/
