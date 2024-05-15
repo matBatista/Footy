@@ -8,6 +8,8 @@ using System.Threading.Tasks;
 using Models;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using Models.Model;
 
 namespace Services.Concretes
 {
@@ -20,41 +22,150 @@ namespace Services.Concretes
             _configuration = configuration;
         }
 
-        public async Task<Campeonato> RetornaCampeonatos()
+        public async Task<ObjetoCategoria> RetornaCampeonatos()
         {
-            string footstats_barrear = _configuration["footstats_barrear"];
+           
             string footstats_url = _configuration["footstats_url"];
-            string resp = "";
 
-            Campeonato camp = new Campeonato();
-            // 1. Create an instance of HttpClient
-            using HttpClient client = new HttpClient();
+            ObjetoCategoria data = new ObjetoCategoria();
 
-            // 2. Set Bearer token in Authorization header
-            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", footstats_barrear);
+            HttpClient client = new HttpClient();
 
-            // 2. Send HTTP request and handle response
+            client = GetHttpClient();
+
             HttpResponseMessage response = await client.GetAsync(footstats_url + "campeonatos");
 
-            // 3. Check if the request was successful (status code 200)
             if (response.IsSuccessStatusCode)
             {
-                // 4. Read response content as string
                 string responseBody = await response.Content.ReadAsStringAsync();
 
-                // 5. Deserialize JSON response to object using Newtonsoft.Json
-                Object data = JsonConvert.DeserializeObject<Object>(responseBody);
+                try
+                {
+                    data = JsonConvert.DeserializeObject<ObjetoCategoria>(responseBody);
+                }
+                catch (Exception ex)
+                {
 
-                // 6. Use deserialized data
-                resp = $"Received data: {data}";
+                }
             }
             else
             {
-                resp = $"Failed to retrieve data. Status code: {response.StatusCode}";
+                data.info_error = $"Failed to retrieve data. Status code: {response.StatusCode}";
             }
 
-            return camp;
+            return data;
         }
+        public async Task<ObjectRodadas> RetornaRodadasCampeonato(int id_campeonato)
+        {
+
+            string footstats_url = _configuration["footstats_url"];
+
+            ObjectRodadas rodadas = new ObjectRodadas();
+
+            HttpClient client = new HttpClient();
+
+            client = GetHttpClient();
+
+            HttpResponseMessage response = await client.GetAsync(footstats_url + $"campeonatos/{id_campeonato}/calendario");
+
+            if (response.IsSuccessStatusCode)
+            {
+                string responseBody = await response.Content.ReadAsStringAsync();
+
+                try
+                {
+                    var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseBody);
+
+                    rodadas = JsonConvert.DeserializeObject<ObjectRodadas>(data["data"].ToString());
+
+                    //data = JsonConvert.DeserializeObject<ObjetoCategoria>(responseBody);
+                }
+                catch (Exception ex)
+                {
+
+                }
+            }
+            else
+            {
+                //data.info_error = $"Failed to retrieve data. Status code: {response.StatusCode}";
+            }
+
+            return rodadas;
+        }
+        public async Task<ObjectFundamentos> RetornaFundamentos(int id_partida)
+        {
+            string footstats_url = _configuration["footstats_url"];
+
+            ObjectFundamentos retorno = new ObjectFundamentos();
+
+            HttpClient client = new HttpClient();
+
+            client = GetHttpClient();
+
+            HttpResponseMessage response = await client.GetAsync(footstats_url + $"partidas/v2/{id_partida}/fundamento");
+
+            if (response.IsSuccessStatusCode)
+            {
+                string responseBody = await response.Content.ReadAsStringAsync();
+
+                try
+                {
+                    var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseBody);
+
+                    retorno = JsonConvert.DeserializeObject<ObjectFundamentos>(data["data"].ToString());
+
+                    //data = JsonConvert.DeserializeObject<ObjetoCategoria>(responseBody);
+                }
+                catch (Exception ex)
+                {
+
+                }
+            }
+            else
+            {
+                //data.info_error = $"Failed to retrieve data. Status code: {response.StatusCode}";
+            }
+
+            return retorno;
+        }
+
+        public async Task<ObjectRanking> RetornaRankingFundamentos(int id_campeonato)
+        {
+            string footstats_url = _configuration["footstats_url"];
+
+            ObjectRanking retorno = new ObjectRanking();
+
+            HttpClient client = new HttpClient();
+
+            client = GetHttpClient();
+
+            HttpResponseMessage response = await client.GetAsync(footstats_url + $"campeonatos/{id_campeonato}/equipes/ranking");
+
+            if (response.IsSuccessStatusCode)
+            {
+                string responseBody = await response.Content.ReadAsStringAsync();
+
+                try
+                {
+                    var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseBody);
+
+                    retorno = JsonConvert.DeserializeObject<ObjectRanking>(data["data"].ToString());
+
+                    //data = JsonConvert.DeserializeObject<ObjetoCategoria>(responseBody);
+                }
+                catch (Exception ex)
+                {
+
+                }
+            }
+            else
+            {
+                //data.info_error = $"Failed to retrieve data. Status code: {response.StatusCode}";
+            }
+
+            return retorno;
+        }
+
 
     }
 }

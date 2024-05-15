@@ -5,14 +5,16 @@
         public List<Campeonato> campeonatos { get; set; }
     }
 
-    public class Data
+    public class ListaCategorias
     {
         public List<Categoria> categorias { get; set; }
     }
 
-    public class RootObject
+    public class ObjetoCategoria
     {
-        public Data data { get; set; }
+        public ListaCategorias data { get; set; }
         public object pagination { get; set; }
+
+        public string info_error { get; set; }
     }
 }
