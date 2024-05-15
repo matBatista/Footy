@@ -1,2 +1,11 @@
 
 /FootAnalises/.vs
+/FootAnalises/bin
+/FootAnalises/bin
+/FootAnalises/bin/Debug/net8.0
+FootAnalises/bin/Debug/net8.0/FootAnalises.pdb
+*.exe
+*.dll
+*.pdb
+/FootAnalises/obj
+/FootAnalises/obj

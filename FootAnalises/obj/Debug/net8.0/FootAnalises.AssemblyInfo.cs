@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FootAnalises")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8bf9cf09e32834872cd9872dee264ee24fcf1db0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+fc9fc4e28aca866409b9e0946aef82c281db3707")]
 [assembly: System.Reflection.AssemblyProductAttribute("FootAnalises")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FootAnalises")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

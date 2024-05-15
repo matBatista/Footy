@@ -1,4 +1,4 @@
-﻿namespace FootAnalises.Model
+﻿namespace Models
 {
     public class Reserva
     {

@@ -1,8 +1,9 @@
-﻿namespace FootAnalises.Model
+﻿
+namespace Models
 {
     public class Campeonato
     {
-        public virtual string id { get; set;}
+        public virtual int id { get; set;}
         public virtual string nome { get; set;}
         public virtual string urlLogo { get; set;}
 

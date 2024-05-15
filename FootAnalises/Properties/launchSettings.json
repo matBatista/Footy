@@ -8,7 +8,9 @@
       "launchUrl": "",
       "applicationUrl": "http://localhost:5169",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "footstats_barrear": "72fa6abf-408",
+        "footstats_url": "https://footstatsapiapp.azurewebsites.net/"
       }
     }
   }
