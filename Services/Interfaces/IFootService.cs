@@ -10,9 +10,10 @@ namespace Services.Interfaces
 {
     public interface IFootService
     {
-        Task<ObjetoCategoria> RetornaCampeonatos();
+        Task<ObjectCampeonato> RetornaCampeonatos();
         Task<ObjectRodadas> RetornaRodadasCampeonato(int id_campeonato);
-        Task<ObjectFundamentos> RetornaFundamentos(int id_partida);
-        Task<ObjectRanking> RetornaRankingFundamentos(int id_campeonato);
+        Task<ObjectFundamentoPartida> RetornaFundamentos(int id_partida);
+        Task<ObjectFundamentoGeral> RetornaRankingFundamentos(int id_campeonato);
+        Task<ObjectFundamentoJogador> RetornaFundamentoJogador(int id_campeonato, int id_fundamento);
     }
 }

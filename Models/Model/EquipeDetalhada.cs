@@ -6,58 +6,37 @@ using System.Threading.Tasks;
 
 namespace Models.Model
 {
+    public class FundamentoEquipe
+    {
+        public int id { get; set; }
+        public string nome { get; set; }
+        public double? qtdJogos { get; set; }
+        public ValoresFundamento certos { get; set; }
+        public ValoresFundamento errados { get; set; }
+        public ValoresFundamento totais { get; set; }
+    }
     public class EquipeDetalhada
     {
         public int Id { get; set; }
         public string NomeEquipe { get; set; }
-        public int? QtdJogos { get; set; }
+        public double? QtdJogos { get; set; }
         public string SrcLogo { get; set; }
 
-        public List<FundamentoDetalhado> FundamentosPros { get; set; }
-        public List<FundamentoDetalhado> FundamentosContra { get; set; }
+        public List<FundamentoEquipe> FundamentosPros { get; set; }
+        public List<FundamentoEquipe> FundamentosContra { get; set; }
 
-        public EquipeDetalhada(EquipeDetalhe equipeDetalhe)
+        public EquipeDetalhada(FundamentoGeral equipeDetalhe)
         {
-            Id = equipeDetalhe.Id;
-            NomeEquipe = equipeDetalhe.NomeEquipe;
-            QtdJogos = equipeDetalhe.QtdJogos;
-            SrcLogo = equipeDetalhe.SrcLogo;
+            Id = equipeDetalhe.id;
+            NomeEquipe = equipeDetalhe.nomeEquipe;
+            QtdJogos = equipeDetalhe.qtdJogos;
+            SrcLogo = equipeDetalhe.srcLogo;
 
-            FundamentosPros = new List<FundamentoDetalhado>();
-            FundamentosContra = new List<FundamentoDetalhado>();
+            FundamentosPros = new List<FundamentoEquipe>();
+            FundamentosContra = new List<FundamentoEquipe>();
         }
 
-        public void AdicionarFundamentosPros(FundamentoTipo fundamento)
-        {
-            var equipeDetalhe = fundamento.Equipes.FirstOrDefault(e => e.Id == Id);
-            if (equipeDetalhe != null)
-            {
-                FundamentosPros.Add(new FundamentoDetalhado
-                {
-                    Id = fundamento.Id,
-                    Nome = fundamento.Nome,
-                    Errados = equipeDetalhe.Errados,
-                    Certos = equipeDetalhe.Certos,
-                    Totais = equipeDetalhe.Totais
-                });
-            }
-        }
-
-        public void AdicionarFundamentosContra(FundamentoTipo fundamento)
-        {
-            var equipeDetalhe = fundamento.Equipes.FirstOrDefault(e => e.Id == Id);
-            if (equipeDetalhe != null)
-            {
-                FundamentosContra.Add(new FundamentoDetalhado
-                {
-                    Id = fundamento.Id,
-                    Nome = fundamento.Nome,
-                    Errados = equipeDetalhe.Errados,
-                    Certos = equipeDetalhe.Certos,
-                    Totais = equipeDetalhe.Totais
-                });
-            }
-        }
+       
     }
 
 }

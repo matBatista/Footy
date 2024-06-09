@@ -25,7 +25,7 @@ namespace FootAnalises.Controllers
         [HttpGet]
         public async Task<ActionResult> Get()
         {
-            ObjetoCategoria camp = await _footService.RetornaCampeonatos();
+            ObjectCampeonato camp = await _footService.RetornaCampeonatos();
             return Ok(camp);
         }
 
@@ -57,32 +57,6 @@ namespace FootAnalises.Controllers
 
             return Ok(list);
         }
-        [HttpGet]
-        [Route("{id_campeonato}/ranking/{id_equipe}")]
-        public async Task<ActionResult> GetRanking(int id_campeonato, int id_equipe)
-        {
-            var list = await _footService.RetornaRankingFundamentos(id_campeonato);
-
-            // Encontrar o EquipeDetalhe correspondente ao Id
-            var equipeDetalhe = list.Pros.SelectMany(f => f.Equipes).FirstOrDefault(e => e.Id == id_equipe)
-                                ?? list.Contra.SelectMany(f => f.Equipes).FirstOrDefault(e => e.Id == id_equipe);
-
-            // Criar a instância de EquipeDetalhada
-            EquipeDetalhada equipeDetalhada = new EquipeDetalhada(equipeDetalhe);
-
-            // Adicionar os fundamentos Pros
-            foreach (var fundamento in list.Pros)
-            {
-                equipeDetalhada.AdicionarFundamentosPros(fundamento);
-            }
-
-            // Adicionar os fundamentos Contra
-            foreach (var fundamento in list.Contra)
-            {
-                equipeDetalhada.AdicionarFundamentosContra(fundamento);
-            }
-
-            return Ok(equipeDetalhada);
-        }
+      
     }
 }

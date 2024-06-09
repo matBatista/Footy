@@ -22,18 +22,16 @@ namespace Services.Concretes
             _configuration = configuration;
         }
 
-        public async Task<ObjetoCategoria> RetornaCampeonatos()
+        public async Task<ObjectCampeonato> RetornaCampeonatos()
         {
-           
-            string footstats_url = _configuration["footstats_url"];
 
-            ObjetoCategoria data = new ObjetoCategoria();
+            ObjectCampeonato result = new ObjectCampeonato();
 
             HttpClient client = new HttpClient();
 
             client = GetHttpClient();
 
-            HttpResponseMessage response = await client.GetAsync(footstats_url + "campeonatos");
+            HttpResponseMessage response = await client.GetAsync(this.footstats_url + "campeonatos");
 
             if (response.IsSuccessStatusCode)
             {
@@ -41,7 +39,9 @@ namespace Services.Concretes
 
                 try
                 {
-                    data = JsonConvert.DeserializeObject<ObjetoCategoria>(responseBody);
+                    var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseBody);
+
+                    result = JsonConvert.DeserializeObject<ObjectCampeonato>(data["data"].ToString());
                 }
                 catch (Exception ex)
                 {
@@ -50,23 +50,23 @@ namespace Services.Concretes
             }
             else
             {
-                data.info_error = $"Failed to retrieve data. Status code: {response.StatusCode}";
+
             }
 
-            return data;
+            return result;
         }
         public async Task<ObjectRodadas> RetornaRodadasCampeonato(int id_campeonato)
         {
 
-            string footstats_url = _configuration["footstats_url"];
+            //string footstats_url = _configuration["footstats_url"];
 
-            ObjectRodadas rodadas = new ObjectRodadas();
+            ObjectRodadas result = new ObjectRodadas();
 
             HttpClient client = new HttpClient();
 
             client = GetHttpClient();
 
-            HttpResponseMessage response = await client.GetAsync(footstats_url + $"campeonatos/{id_campeonato}/calendario");
+            HttpResponseMessage response = await client.GetAsync(this.footstats_url + $"campeonatos/{id_campeonato}/calendario");
 
             if (response.IsSuccessStatusCode)
             {
@@ -76,7 +76,7 @@ namespace Services.Concretes
                 {
                     var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseBody);
 
-                    rodadas = JsonConvert.DeserializeObject<ObjectRodadas>(data["data"].ToString());
+                    result = JsonConvert.DeserializeObject<ObjectRodadas>(data["data"].ToString());
 
                     //data = JsonConvert.DeserializeObject<ObjetoCategoria>(responseBody);
                 }
@@ -90,19 +90,19 @@ namespace Services.Concretes
                 //data.info_error = $"Failed to retrieve data. Status code: {response.StatusCode}";
             }
 
-            return rodadas;
+            return result;
         }
-        public async Task<ObjectFundamentos> RetornaFundamentos(int id_partida)
+        public async Task<ObjectFundamentoPartida> RetornaFundamentos(int id_partida)
         {
-            string footstats_url = _configuration["footstats_url"];
+            //string footstats_url = _configuration["footstats_url"];
 
-            ObjectFundamentos retorno = new ObjectFundamentos();
+            ObjectFundamentoPartida result = new ObjectFundamentoPartida();
 
             HttpClient client = new HttpClient();
 
             client = GetHttpClient();
 
-            HttpResponseMessage response = await client.GetAsync(footstats_url + $"partidas/v2/{id_partida}/fundamento");
+            HttpResponseMessage response = await client.GetAsync(this.footstats_url + $"partidas/v2/{id_partida}/fundamento");
 
             if (response.IsSuccessStatusCode)
             {
@@ -112,7 +112,7 @@ namespace Services.Concretes
                 {
                     var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseBody);
 
-                    retorno = JsonConvert.DeserializeObject<ObjectFundamentos>(data["data"].ToString());
+                    result = JsonConvert.DeserializeObject<ObjectFundamentoPartida>(data["data"].ToString());
 
                     //data = JsonConvert.DeserializeObject<ObjetoCategoria>(responseBody);
                 }
@@ -126,20 +126,20 @@ namespace Services.Concretes
                 //data.info_error = $"Failed to retrieve data. Status code: {response.StatusCode}";
             }
 
-            return retorno;
+            return result;
         }
 
-        public async Task<ObjectRanking> RetornaRankingFundamentos(int id_campeonato)
+        public async Task<ObjectFundamentoGeral> RetornaRankingFundamentos(int id_campeonato)
         {
-            string footstats_url = _configuration["footstats_url"];
+            //string footstats_url = _configuration["footstats_url"];
 
-            ObjectRanking retorno = new ObjectRanking();
+            ObjectFundamentoGeral result = new ObjectFundamentoGeral();
 
             HttpClient client = new HttpClient();
 
             client = GetHttpClient();
 
-            HttpResponseMessage response = await client.GetAsync(footstats_url + $"campeonatos/{id_campeonato}/equipes/ranking");
+            HttpResponseMessage response = await client.GetAsync(this.footstats_url + $"campeonatos/{id_campeonato}/equipes/ranking");
 
             if (response.IsSuccessStatusCode)
             {
@@ -149,9 +149,7 @@ namespace Services.Concretes
                 {
                     var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseBody);
 
-                    retorno = JsonConvert.DeserializeObject<ObjectRanking>(data["data"].ToString());
-
-                    //data = JsonConvert.DeserializeObject<ObjetoCategoria>(responseBody);
+                    result = JsonConvert.DeserializeObject<ObjectFundamentoGeral>(data["data"].ToString());
                 }
                 catch (Exception ex)
                 {
@@ -163,7 +161,42 @@ namespace Services.Concretes
                 //data.info_error = $"Failed to retrieve data. Status code: {response.StatusCode}";
             }
 
-            return retorno;
+            return result;
+        }
+
+        public async Task<ObjectFundamentoJogador> RetornaFundamentoJogador(int id_campeonato, int id_fundamento)
+        {
+            //string footstats_url = _configuration["footstats_url"];
+
+            ObjectFundamentoJogador result = new ObjectFundamentoJogador();
+
+            HttpClient client = new HttpClient();
+
+            client = GetHttpClient();
+
+            HttpResponseMessage response = await client.GetAsync(this.footstats_url + $"campeonatos/{id_campeonato}/fundamento/{id_fundamento}/jogadores/ranking");
+
+            if (response.IsSuccessStatusCode)
+            {
+                string responseBody = await response.Content.ReadAsStringAsync();
+
+                try
+                {
+                    var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseBody);
+
+                    result = JsonConvert.DeserializeObject<ObjectFundamentoJogador>(data["data"].ToString());
+                }
+                catch (Exception ex)
+                {
+
+                }
+            }
+            else
+            {
+                //data.info_error = $"Failed to retrieve data. Status code: {response.StatusCode}";
+            }
+
+            return result;
         }
 
 

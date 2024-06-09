@@ -12,7 +12,8 @@ namespace Services.Concretes
     public class BaseService : IBaseService
     {
         public IConfiguration _configuration { get;  }
-
+        public string footstats_url = "";
+        public string footstats_barrear = "";
         public BaseService(IConfiguration configuration)
         {
             _configuration = configuration;
@@ -20,7 +21,8 @@ namespace Services.Concretes
 
         public HttpClient GetHttpClient()
         {
-            string footstats_barrear = _configuration["footstats_barrear"];
+            this.footstats_url = _configuration["footstats_url"];
+            this.footstats_barrear = _configuration["footstats_barrear"];
 
             HttpClient client = new HttpClient();
 
