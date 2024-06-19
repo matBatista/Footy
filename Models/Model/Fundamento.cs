@@ -58,4 +58,19 @@ namespace Models.Model
     }
 
 
+    public class FundamentoStats
+    {
+        public string nome { get; set; }
+        public double? qtdJogos { get; set; }
+        public double? pros_certos { get; set; }
+        public double? pros_errados { get; set; }
+        public double? pros_total { get; set; }
+        public double? pros_media { get; set; }
+        public double? cons_certos { get; set; }
+        public double? cons_errados { get; set; }
+        public double? cons_total { get; set; }
+        public double? cons_media { get; set; }
+
+    }
+
 }

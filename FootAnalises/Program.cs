@@ -69,6 +69,15 @@ builder.Services.AddSwaggerGen(options =>
 
 builder.Services.AddServices();
 
+// Configure CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowSpecificOrigin",
+        builder => builder.WithOrigins("http://localhost:4200") // Specify the allowed origin(s)
+                          .AllowAnyHeader()
+                          .AllowAnyMethod());
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -85,6 +94,9 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Error");
     app.UseHsts();
 }
+
+// Use the configured CORS policy
+app.UseCors("AllowSpecificOrigin");
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();

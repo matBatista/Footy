@@ -35,8 +35,5 @@ namespace Models.Model
             FundamentosPros = new List<FundamentoEquipe>();
             FundamentosContra = new List<FundamentoEquipe>();
         }
-
-       
     }
-
 }

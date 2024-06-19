@@ -35,12 +35,21 @@ namespace FootAnalises.Controllers
             // Criar a instância de EquipeDetalhada
             EquipeDetalhada equipeDetalhada = new EquipeDetalhada(equipeDetalhe);
 
-            equipeDetalhada.FundamentosPros = AdicionarFundamentos(list.pros, id_equipe);
+            //equipeDetalhada.FundamentosPros = AdicionarFundamentos(list.pros, id_equipe);
 
-            equipeDetalhada.FundamentosContra = AdicionarFundamentos(list.contra, id_equipe);
+            //equipeDetalhada.FundamentosContra = AdicionarFundamentos(list.contra, id_equipe);
 
             return Ok(equipeDetalhada);
         }
+
+        [HttpGet]
+        [Route("/equipe_fundamento")]
+        public async Task<ActionResult> GetFundamentosEquipe(int id_campeonato, int id_equipe)
+        {
+            List<FundamentoStats> list = await _footService.RetornaFundamentosEquipe(id_campeonato, id_equipe);
+            return Ok(list);
+        }
+       
         //http://localhost:5169/equipe?id_campeonato=984&id_equipe=1004
         [HttpGet]
         [Route("/jogador")]
@@ -50,31 +59,10 @@ namespace FootAnalises.Controllers
 
             return Ok(list);
         }
-        public List<FundamentoEquipe> AdicionarFundamentos(List<FundamentosGeral> fundamentos, int id_equipe)
-        {
-            List<FundamentoEquipe> listFundamento = new List<FundamentoEquipe>();
-            
-            foreach(var fundamento in fundamentos)
-            {
-                var detalhe = fundamento.equipes.FirstOrDefault(x => x.id == id_equipe);
-                
-                if(detalhe != null)
-                {
-                    FundamentoEquipe fEquipe = new FundamentoEquipe
-                    {
-                        certos = detalhe.certos,
-                        errados = detalhe.errados,
-                        totais = detalhe.totais,
-                        id = fundamento.id,
-                        nome = fundamento.nome
-                    };
+      
 
-                    listFundamento.Add(fEquipe);
-                }
-            }
 
-            return listFundamento;
-        }
 
     }
 }
+

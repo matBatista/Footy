@@ -26,10 +26,10 @@ namespace Models.Model
         public List<Jogador> segundoTempo { get; set; }
     }
 
-    public class Jogador
-    {
-        public string nomeJogador { get; set; }
-        public int acoesCertas { get; set; }
-        public int acoesErradas { get; set; }
-    }
+    //public class Jogador
+    //{
+    //    public string nomeJogador { get; set; }
+    //    public int acoesCertas { get; set; }
+    //    public int acoesErradas { get; set; }
+    //}
 }

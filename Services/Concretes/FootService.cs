@@ -48,12 +48,34 @@ namespace Services.Concretes
 
                 }
             }
-            else
+
+            ObjectCampeonato obj = new ObjectCampeonato();
+            obj.categorias = new List<Categoria>();
+
+            foreach (var res in result.categorias)
             {
+                Categoria nova = new Categoria();
+                nova.categoria = res.categoria;
+                nova.campeonatos = new List<Campeonato>();
+                foreach (var camp in res.campeonatos)
+                {
+                    if (camp.nome.Contains("24"))
+                    {
+
+                        ObjectRodadas rodadas = await RetornaRodadasCampeonato(camp.id);
+                        
+                        if (rodadas.rodadas.SelectMany(x => x.partidas).Any(p => p.dataHora >= DateTime.Now))
+                        {
+                            nova.campeonatos.Add(camp);
+                        }
+                    }
+                }
+
+                obj.categorias.Add(nova);
 
             }
 
-            return result;
+            return obj;
         }
         public async Task<ObjectRodadas> RetornaRodadasCampeonato(int id_campeonato)
         {
@@ -197,6 +219,110 @@ namespace Services.Concretes
             }
 
             return result;
+        }
+        
+        public async Task<ObjectEscalacaoPartida> RetornaEscalacao(int id_partida)
+        {
+            //string footstats_url = _configuration["footstats_url"];
+
+            ObjectEscalacaoPartida result = new ObjectEscalacaoPartida();
+
+            HttpClient client = new HttpClient();
+
+            client = GetHttpClient();
+
+            HttpResponseMessage response = await client.GetAsync(this.footstats_url + $"/partidas/{id_partida}/escalacao");
+
+            if (response.IsSuccessStatusCode)
+            {
+                string responseBody = await response.Content.ReadAsStringAsync();
+
+                try
+                {
+                    var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(responseBody);
+
+                    result = JsonConvert.DeserializeObject<ObjectEscalacaoPartida>(data["data"].ToString());
+
+                    //data = JsonConvert.DeserializeObject<ObjetoCategoria>(responseBody);
+                }
+                catch (Exception ex)
+                {
+
+                }
+            }
+            else
+            {
+                //data.info_error = $"Failed to retrieve data. Status code: {response.StatusCode}";
+            }
+
+            return result;
+        }
+
+        //public async Task<ObjectEscalacaoPartida> RetornaEscalacaoPartida(int id_partida)
+        //{
+        //    //string footstats_url = _configuration["footstats_url"];
+
+        //    ObjectEscalacaoPartida result = await RetornaEscalacao(id_partida);
+
+        //}
+
+
+        public async Task<List<FundamentoStats>> RetornaFundamentosEquipe(int id_campeonato, int id_equipe)
+        {
+            ObjectFundamentoGeral list = await RetornaRankingFundamentos(id_campeonato);
+
+            List<FundamentoStats> listStatus = new List<FundamentoStats>();
+            
+            UpdateFundamentoStatus(list.pros, listStatus, id_equipe, true);
+            UpdateFundamentoStatus(list.contra, listStatus, id_equipe, false);
+
+            return listStatus;
+        }
+        private void UpdateFundamentoStatus(List<FundamentosGeral> fundamentos, List<FundamentoStats> listStatus, int id_equipe, bool isPro)
+        {
+            foreach (var fundamento in fundamentos)
+            {
+                if (fundamento.nome == "Índice") continue;
+
+                var detalhe = fundamento.equipes.FirstOrDefault(x => x.id == id_equipe);
+                if (detalhe == null) continue;
+
+                var existingStatus = listStatus.FirstOrDefault(x => x.nome == fundamento.nome);
+
+                if (existingStatus == null)
+                {
+                    FundamentoStats newStatus = new FundamentoStats
+                    {
+                        nome = fundamento.nome,
+                        qtdJogos = detalhe.qtdJogos
+                    };
+
+                    UpdateStatus(newStatus, detalhe, isPro);
+                    listStatus.Add(newStatus);
+                }
+                else
+                {
+                    UpdateStatus(existingStatus, detalhe, isPro);
+                }
+            }
+        }
+
+        private void UpdateStatus(FundamentoStats status, FundamentoGeral detalhe, bool isPro)
+        {
+            if (isPro)
+            {
+                status.pros_certos = detalhe.certos?.total;
+                status.pros_errados = detalhe.errados?.total;
+                status.pros_total = detalhe.totais?.total;
+                status.pros_media = detalhe.totais?.media;
+            }
+            else
+            {
+                status.cons_certos = detalhe.certos?.total;
+                status.cons_errados = detalhe.errados?.total;
+                status.cons_total = detalhe.totais?.total;
+                status.cons_media = detalhe.totais?.media;
+            }
         }
 
 

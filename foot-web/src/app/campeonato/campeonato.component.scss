@@ -1,0 +1,75 @@
+.page{
+    &__campos
+    {
+        &_titulo
+        {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            button{
+                padding: 10px;
+            }
+        }
+    }
+}
+
+h1 {
+font-size: 3.125rem;
+color: var(--gray-900);
+font-weight: 500;
+line-height: 100%;
+letter-spacing: -0.125rem;
+margin: 0;
+
+}
+
+h3{
+    font-weight: 500;
+    line-height: 100%;
+    margin-top: 20px;
+    align-self: center;
+    display: flex;
+    position: relative;
+    flex-wrap: nowrap;
+}
+mat-card{
+    width: 70%;
+    height: 90%;
+}
+
+mat-card-header{
+    margin-top: 15px;
+    font-size: 15px;
+    align-self: center;
+    position: relative;
+}
+mat-card-content{
+    margin-top: 10px;
+    align-self: center;
+    display: flex;
+}
+mat-card-content p{
+    padding-top: 15px;
+    font-size: 20px;
+    align-self: center;
+}
+mat-card-content img{
+    margin-left: 10px;
+    margin-right: 10px;
+    width: 50px;
+    height: 50px;
+}
+mat-card-actions{
+    size: 10px;
+    align-self: center;
+}
+mat-grid-list{
+    align-items: center;
+}
+
+
+.mat-dialog-container {
+    max-width: none !important;
+    width: 1600px;
+}

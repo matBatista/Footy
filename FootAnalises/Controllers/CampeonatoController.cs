@@ -26,6 +26,7 @@ namespace FootAnalises.Controllers
         public async Task<ActionResult> Get()
         {
             ObjectCampeonato camp = await _footService.RetornaCampeonatos();
+
             return Ok(camp);
         }
 
@@ -57,6 +58,15 @@ namespace FootAnalises.Controllers
 
             return Ok(list);
         }
-      
+        
+        [HttpGet]
+        [Route("/escalacao_partida")]
+        public async Task<ActionResult> RetornaEscalacao(int id_partida)
+        {
+            var list = await _footService.RetornaEscalacao(id_partida);
+
+            return Ok(list);
+        }
+
     }
 }

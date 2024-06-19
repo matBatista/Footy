@@ -15,5 +15,7 @@ namespace Services.Interfaces
         Task<ObjectFundamentoPartida> RetornaFundamentos(int id_partida);
         Task<ObjectFundamentoGeral> RetornaRankingFundamentos(int id_campeonato);
         Task<ObjectFundamentoJogador> RetornaFundamentoJogador(int id_campeonato, int id_fundamento);
+        Task<List<FundamentoStats>> RetornaFundamentosEquipe(int id_campeonato, int id_equipe);
+        Task<ObjectEscalacaoPartida> RetornaEscalacao(int id_partida);
     }
 }

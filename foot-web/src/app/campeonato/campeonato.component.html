@@ -1,4 +1,71 @@
-<div class>
-    <h1>Hello, {{ title }}</h1>
-    <p>Congratulations! Your app is running. 🎉</p>
+<div class="page">
+    <div class="page__campos">
+      
+    <!-- <h3>Lista de Rodadas</h3> -->
+    <div class="page__campos_titulo">
+      <!-- <button (click)="carregaRodada(-1)">
+        <i class="fi fi-br-angle-left"></i>
+      </button> -->
+      <button (click)="carregaRodada(-1)" class="btn btn-outline-light"><i class="fi fi-br-angle-left"></i></button>
+      <h3>Rodada {{this.id_rodada}}</h3>
+      <button (click)="carregaRodada(1)" class="btn btn-outline-light"><i class="fi fi-br-angle-right"></i></button>
+      <!-- <button >
+        
+      </button> -->
+    </div>
+    
+    <mat-grid-list cols="3" rowHeight="200px">
+      <div *ngFor="let partida of rodadaShow?.partidas">
+        <mat-grid-tile>
+          <mat-card>
+            <mat-card-header>
+              {{partida.dataHora | date: 'dd/MM/yy HH:mm'}}
+            </mat-card-header>
+            <mat-card-content>
+            <img mat-card-image src="{{partida.mandante.urlLogo}}" alt="{{partida.mandante.nome}}">
+            <p>
+            {{ partida.mandante.sigla  }} {{partida.mandante.gols}}
+            X {{partida.visitante.gols}} {{ partida.visitante.sigla  }}
+            </p>
+            <img mat-card-image src="{{partida.visitante.urlLogo}}" alt="{{partida.visitante.nome}}">
+          </mat-card-content>
+            <mat-card-actions>
+              <button mat-button (click)="OpenSquad({partida})">
+                Escalação
+              </button>
+              <button mat-button (click)="OpenStats({partida})">
+                Estatisticas
+              </button>
+
+              <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
+                Launch demo modal
+              </button>
+              
+              <!-- Modal -->
+              <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h1 class="modal-title fs-5" id="exampleModalLabel">Modal title</h1>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                      ...
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                      <button type="button" class="btn btn-primary">Save changes</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </mat-card-actions>
+
+
+
+          </mat-card>
+        </mat-grid-tile>
+      </div>
+    </mat-grid-list>
+    </div>
 </div>

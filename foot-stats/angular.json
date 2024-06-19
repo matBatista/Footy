@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "foot-web": {
+    "foot-stats": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -17,7 +17,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/foot-web",
+            "outputPath": "dist/foot-stats",
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": [
@@ -32,19 +32,10 @@
               }
             ],
             "styles": [
-              
-              "@flaticon/flaticon-uicons/css/all/all.css",
-              "bootstrap/dist/css/bootstrap.min.css",
+              "@angular/material/prebuilt-themes/azure-blue.css",
               "src/styles.scss"
             ],
-            "scripts": [
-              "bootstrap/dist/js/bootstrap.min.js"
-            ],
-            "server": "src/main.server.ts",
-            "prerender": true,
-            "ssr": {
-              "entry": "server.ts"
-            }
+            "scripts": []
           },
           "configurations": {
             "production": {
@@ -74,10 +65,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "foot-web:build:production"
+              "buildTarget": "foot-stats:build:production"
             },
             "development": {
-              "buildTarget": "foot-web:build:development"
+              "buildTarget": "foot-stats:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -101,20 +92,16 @@
               }
             ],
             "styles": [
-              
-              "@flaticon/flaticon-uicons/css/all/all.css",
-              "bootstrap/dist/css/bootstrap.min.css",
+              "@angular/material/prebuilt-themes/azure-blue.css",
               "src/styles.scss"
             ],
-            "scripts": [
-              "bootstrap/dist/js/bootstrap.min.js"
-            ]
+            "scripts": []
           }
         }
       }
     }
   },
   "cli": {
-    "analytics": false
+    "analytics": "5d0a8100-ff7e-484e-9940-c6bb207b9a54"
   }
 }
