@@ -28,7 +28,7 @@ export class AppComponent {
     
     this.footyService.obterCampeonatos().subscribe(
       (response) => {
-        console.log(response);
+        // console.log(response);
         this.dados = response.categorias;
       },
       (error) => {

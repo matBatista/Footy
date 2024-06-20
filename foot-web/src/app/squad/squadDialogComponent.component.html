@@ -1,14 +1,123 @@
 <div class="dialogo">
     <!-- <h3>Partida</h3> -->
   <div class="dialogo__campos">
-    <div class="text-center">
-      <h3 class="text-4xl font-bold underline">
-        Escalação
-      </h3>
+    <div class="container">
+      <div *ngIf="escalacao && escalacao.length > 0; else noItems">
+        <div class="container text-center">
+          <div class="row equipes">
+            <div class="col-sm-6">
+              <img mat-card-image src="{{partida.mandante.urlLogo}}" alt="{{partida.mandante.nome}}">
+              {{ partida.mandante.sigla  }}
+            </div>
+            <div class="col-sm-6">
+              <img mat-card-image src="{{partida.visitante.urlLogo}}" alt="{{partida.visitante.nome}}">
+              {{partida.visitante.sigla}}
+            </div>
+          </div>
+        </div>
+        
+        <div class="container text-start">
+          <div *ngFor="let item of escalacao">
+            <div class="row titulares">
+              <div class="col-sm-1">
+                {{item.mandante.pos}}
+              </div>
+              <div class="col-sm-3">
+                {{item.mandante.nome}}
+              </div>
+              <div class="col-sm-1">
+                {{item.mandante.numero}}
+              </div>
+              <div class="col-sm-1">
+                <!-- {{item.mandante.atividade}} -->
+                <span *ngFor="let x of createArray(item.mandante.gols)"  class="material-symbols-outlined">sports_soccer</span>
+                <span *ngFor="let y of createArray(item.mandante.gols_contra)" class="material-symbols-outlined" style="color: #ff6767">sports_soccer</span>
+                <!-- <div *ngIf="escalacao && escalacao.length > 0; else noItems"> -->
+                <!-- <span *ngIf="item.mandante.gols > 0" class="material-symbols-outlined">sports_soccer</span>
+                </div>
+                <div *ngIf="item.mandante.gols_contra > 0;">
+                <span *ngIf="item.mandante.gols_contra > 0" class="material-symbols-outlined" style="color: #ff6767">sports_soccer</span>
+                </div> -->
+              </div>
+              <div class="col-sm-1">
+                {{item.visitante.pos}}
+              </div>
+              <div class="col-sm-3">
+                {{item.visitante.nome}}
+              </div>
+              <div class="col-sm-1">
+                {{item.visitante.numero}}
+              </div>
+              <div class="col-sm-1">
+                <!-- {{item.visitante.gols}} -->
+                <!-- <span *ngIf="item.visitante.gols > 0" class="material-symbols-outlined">sports_soccer</span>
+                <span *ngIf="item.visitante.gols_contra > 0" class="material-symbols-outlined" style="color: #ff6767">sports_soccer</span> -->
+
+                <span *ngFor="let z of createArray(item.visitante.gols)"  class="material-symbols-outlined">sports_soccer</span>
+                <span *ngFor="let q of createArray(item.visitante.gols_contra)" class="material-symbols-outlined" style="color: #ff6767">sports_soccer</span>
+              </div>
+            </div>
+            <div class="row reservas">
+              <div class="col-sm-1">
+                {{item.mandante.sub?.pos}}
+              </div>
+              <div class="col-sm-3">
+                {{item.mandante.sub?.nome}}
+              </div>
+              <div class="col-sm-1">
+                {{item.mandante.sub?.numero}}
+              </div>
+              <div class="col-sm-1">
+                <!-- {{item.mandante.atividade}} -->
+                <!-- <span *ngIf="item.mandante.sub?.gols > 0" class="material-symbols-outlined">sports_soccer</span>
+                <span *ngIf="item.mandante.sub?.gols_contra > 0" class="material-symbols-outlined" style="color: #ff6767">sports_soccer</span> -->
+                
+                <div *ngIf="item.mandante.sub?.gols > 0; else noVSG">
+                  <span *ngFor="let r of createArray(item.mandante.sub?.gols)" class="material-symbols-outlined">sports_soccer</span>
+                  <span *ngFor="let s of createArray(item.mandante.sub?.gols_contra)" class="material-symbols-outlined" style="color: #ff6767">sports_soccer</span>
+                </div>
+                  <ng-template #noVSG>
+                  </ng-template>
+              </div>
+              <div class="col-sm-1">
+                {{item.visitante.sub?.pos}}
+              </div>
+              <div class="col-sm-3">
+                {{item.visitante.sub?.nome}}
+              </div>
+              <div class="col-sm-1">
+                {{item.visitante.sub?.numero}}
+              </div>
+              <div class="col-sm-1">
+                <!-- {{item.visitante.gols}} -->
+                <!-- <span *ngIf="item.visitante.sub?.gols > 0" class="material-symbols-outlined">sports_soccer</span>
+                <span *ngIf="item.visitante.sub?.gols_contra > 0" class="material-symbols-outlined" style="color: #ff6767">sports_soccer</span> -->
+                <div *ngIf="item.visitante.sub?.gols > 0; else noVSG">
+                <span *ngFor="let t of createArray(item.visitante.sub?.gols)"  class="material-symbols-outlined">sports_soccer</span>
+                <span *ngFor="let u of createArray(item.visitante.sub?.gols_contra)" class="material-symbols-outlined" style="color: #ff6767">sports_soccer</span>
+                </div>
+                <ng-template #noVSG>
+                </ng-template>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <ng-template #noItems>
+        <div class="container text-center noitens">
+          <h3>Escalação não está disponível.</h3>
+        </div>
+      </ng-template>
     </div>
-    
-    <!-- <mat-grid-list cols="4" rowHeight="100px">
-      <mat-grid-tile [colspan]="2" [rowspan]="10"> -->
+    <!-- <div *ngFor="let item of campeonato.campeonatos">
+      <button mat-menu-item (click)="navigateToRoute('campeonato',{item})"> 
+        <img [src]="item.urlLogo" alt="{{ item.nome }} Logo">
+        {{ item.nome }} 
+      </button>
+    </div> -->
+
+        <!--
         <div class="dialogo__campos__table">
         <table mat-table [dataSource]="escalacao_mandante || []" class="mat-elevation-z8 demo-table">
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
@@ -19,19 +128,16 @@
               *matRowDef="let row; columns: displayedColumns;"
           ></tr>
 
-          <!-- Position Column -->
           <ng-container matColumnDef="pos">
             <th mat-header-cell *matHeaderCellDef>POS</th>
             <td mat-cell *matCellDef="let element">{{element.posicao}}</td>
           </ng-container>
         
-          <!-- Name Column -->
           <ng-container matColumnDef="nome">
             <th mat-header-cell *matHeaderCellDef>Nome</th>
             <td mat-cell *matCellDef="let element">{{element?.nomeJogador}}</td>
           </ng-container>
         
-          <!-- Weight Column -->
           <ng-container matColumnDef="numero">
             <th mat-header-cell *matHeaderCellDef>N</th>
             <td mat-cell *matCellDef="let element">{{element?.numeroDaCamisa}}</td>
@@ -43,8 +149,7 @@
           </ng-container>
         </table>
         </div>
-      <!-- </mat-grid-tile>
-      <mat-grid-tile [colspan]="2" [rowspan]="10"> -->
+
         <div class="dialogo__campos__table">
         <table mat-table [dataSource]="escalacao_visitante || []" class="mat-elevation-z8 demo-table">
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
@@ -55,19 +160,16 @@
               *matRowDef="let row; columns: displayedColumns;"
           ></tr>
 
-           <!-- Position Column -->
            <ng-container matColumnDef="pos">
             <th mat-header-cell *matHeaderCellDef>POS</th>
             <td mat-cell *matCellDef="let element">{{element.posicao}}</td>
           </ng-container>
         
-          <!-- Name Column -->
           <ng-container matColumnDef="nome">
             <th mat-header-cell *matHeaderCellDef>Nome</th>
             <td mat-cell *matCellDef="let element">{{element?.nomeJogador}}</td>
           </ng-container>
         
-          <!-- Weight Column -->
           <ng-container matColumnDef="numero">
             <th mat-header-cell *matHeaderCellDef>N</th>
             <td mat-cell *matCellDef="let element">{{element?.numeroDaCamisa}}</td>
@@ -79,7 +181,6 @@
           </ng-container>
         </table>
         </div>
-      <!-- </mat-grid-tile>
-    </mat-grid-list> -->
+    -->
   </div>
 </div>

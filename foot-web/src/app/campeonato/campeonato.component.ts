@@ -56,7 +56,7 @@ export class CampeonatoComponent {
   { 
     this.routeSub = this.route.params.subscribe(params => {
       
-      console.log("params", params);
+      // console.log("params", params);
       this.id_campeonato = params['id_campeonato'];
       this.id_rodada = 0;
       this.load();
@@ -89,7 +89,7 @@ export class CampeonatoComponent {
   carregaRodada(item: any)
   {
     this.id_rodada = this.id_rodada + item;
-    console.log("rodada: ", this.id_rodada);
+    // console.log("rodada: ", this.id_rodada);
 
     if(this.dados != null){
       this.dados.forEach(e => {
@@ -110,16 +110,14 @@ export class CampeonatoComponent {
   }
   OpenStats(item: any){
    
-    console.log("item:", item);
-    console.log(item.partida.mandante.id);
-    console.log(item.partida.visitante.id);
+    // console.log("item:", item);
 
     const dialogRef = this.dialog.open(DialogComponent, {
       width: '980px',
       height: '600px',
       maxHeight: '90vh',
       maxWidth: '90vw',
-      data: {id_time_a: item.partida.mandante.id, id_time_b: item.partida.visitante.id, id_campeonato: this.id_campeonato}
+      data: {item: item.partida, id_campeonato: this.id_campeonato}
     });
 
     dialogRef.afterClosed().subscribe(result => {
@@ -142,11 +140,11 @@ export class CampeonatoComponent {
     // console.log(item.partida.visitante.id);
 
     const dialogRef = this.dialog.open(SquadDialogComponent, {
-      width: '980px',
-      height: '600px',
+      width: '700px',
+      height: '380px',
       maxHeight: '90vh',
       maxWidth: '90vw',
-      data: {id_partida: item.partida.id}
+      data: {item: item}
     });
 
     dialogRef.afterClosed().subscribe(result => {

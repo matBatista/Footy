@@ -1,147 +1,18 @@
 <div class="dialogo">
   <!-- <h3>Partida</h3> -->
   <div class="dialogo__campos">
-    <div class="dialogo__campos_titulo">
-    <h3>Estatisticas</h3>
-    </div>
-    <!-- <h3>Partida</h3> -->
-    <!-- <mat-grid-list cols="4" rowHeight="100px"> -->
-      <!-- <mat-grid-tile [colspan]="2" [rowspan]="10"> -->
-        <div class="dialogo__campos__table">
-          <div class="row">
-            <div class="col-md-auto">
-              <table mat-table [dataSource]="fundamento_equipe_a || []">
-                <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-                <tr
-                    mat-row
-                    (click)="clickedRows.clear();clickedRows.add(row)"
-                    [class.demo-row-is-clicked]="clickedRows.has(row)"
-                    *matRowDef="let row; columns: displayedColumns;"
-                ></tr>
+    <div class="container">
+      <div class="container text-center">
+        <h3>Estatisticas</h3>
+      </div>
+      <div class="container">
+        <div class="container text-start">
+          <div *ngFor="let item of estatisticas">
 
-                <!-- Position Column -->
-                <ng-container matColumnDef="nome">
-                  <th mat-header-cell *matHeaderCellDef>Nome</th>
-                  <td mat-cell *matCellDef="let element">{{element.nome}}</td>
-                </ng-container>
-              
-                <!-- Name Column -->
-                <ng-container matColumnDef="qtdJogos">
-                  <th mat-header-cell *matHeaderCellDef>Jogos</th>
-                  <td mat-cell *matCellDef="let element">{{element?.qtdJogos}}</td>
-                </ng-container>
-              
-                <!-- Weight Column -->
-                <ng-container matColumnDef="pros_certos">
-                  <th mat-header-cell *matHeaderCellDef>Certos</th>
-                  <td mat-cell *matCellDef="let element">{{element?.pros_certos}}</td>
-                </ng-container>
-          
-                <ng-container matColumnDef="pros_errados">
-                  <th mat-header-cell *matHeaderCellDef>Errados</th>
-                  <td mat-cell *matCellDef="let element">{{element?.pros_errados}}</td>
-                </ng-container>
-
-                <ng-container matColumnDef="pros_media">
-                  <th mat-header-cell *matHeaderCellDef>Media</th>
-                  <td mat-cell *matCellDef="let element">{{element?.pros_media?.toFixed(2)}}</td>
-                </ng-container>
-
-                <ng-container matColumnDef="pros_total">
-                  <th mat-header-cell *matHeaderCellDef>Total</th>
-                  <td mat-cell *matCellDef="let element">{{element?.pros_total}}</td>
-                </ng-container>
-
-
-                <ng-container matColumnDef="cons_certos">
-                  <th mat-header-cell *matHeaderCellDef>Certos</th>
-                  <td mat-cell *matCellDef="let element">{{element?.cons_certos}}</td>
-                </ng-container>
-          
-                <ng-container matColumnDef="cons_errados">
-                  <th mat-header-cell *matHeaderCellDef>Errados</th>
-                  <td mat-cell *matCellDef="let element">{{element?.cons_errados}}</td>
-                </ng-container>
-                
-                <ng-container matColumnDef="cons_media">
-                  <th mat-header-cell *matHeaderCellDef>Media</th>
-                  <td mat-cell *matCellDef="let element">{{element?.cons_media?.toFixed(2)}}</td>
-                </ng-container>
-                
-                <ng-container matColumnDef="cons_total">
-                  <th mat-header-cell *matHeaderCellDef>Total</th>
-                  <td mat-cell *matCellDef="let element">{{element?.cons_total}}</td>
-                </ng-container>
-              </table>
-            </div>
-        <!-- </mat-grid-tile> -->
-        <!-- <mat-grid-tile [colspan]="2" [rowspan]="10"> -->
-            <div class="col-md-auto">
-              <table mat-table [dataSource]="fundamento_equipe_b || []">
-            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr
-                mat-row
-                (click)="clickedRows.clear();clickedRows.add(row)"
-                [class.demo-row-is-clicked]="clickedRows.has(row)"
-                *matRowDef="let row; columns: displayedColumns;"
-            ></tr>
-            <!-- Position Column -->
-            <ng-container matColumnDef="nome">
-              <th mat-header-cell *matHeaderCellDef>Nome</th>
-              <td mat-cell *matCellDef="let element">{{element.nome}}</td>
-            </ng-container>
-          
-            <!-- Name Column -->
-            <ng-container matColumnDef="qtdJogos">
-              <th mat-header-cell *matHeaderCellDef>Jogos</th>
-              <td mat-cell *matCellDef="let element">{{element?.qtdJogos}}</td>
-            </ng-container>
-          
-            <!-- Weight Column -->
-            <ng-container matColumnDef="pros_certos">
-              <th mat-header-cell *matHeaderCellDef>Certos</th>
-              <td mat-cell *matCellDef="let element">{{element?.pros_certos}}</td>
-            </ng-container>
-      
-            <ng-container matColumnDef="pros_errados">
-              <th mat-header-cell *matHeaderCellDef>Errados</th>
-              <td mat-cell *matCellDef="let element">{{element?.pros_errados}}</td>
-            </ng-container>
-
-            <ng-container matColumnDef="pros_media">
-              <th mat-header-cell *matHeaderCellDef>Media</th>
-              <td mat-cell *matCellDef="let element">{{element?.pros_media?.toFixed(2)}}</td>
-            </ng-container>
-
-            <ng-container matColumnDef="pros_total">
-              <th mat-header-cell *matHeaderCellDef>Total</th>
-              <td mat-cell *matCellDef="let element">{{element?.pros_total}}</td>
-            </ng-container>
-
-
-            <ng-container matColumnDef="cons_certos">
-              <th mat-header-cell *matHeaderCellDef>Certos</th>
-              <td mat-cell *matCellDef="let element">{{element?.cons_certos}}</td>
-            </ng-container>
-      
-            <ng-container matColumnDef="cons_errados">
-              <th mat-header-cell *matHeaderCellDef>Errados</th>
-              <td mat-cell *matCellDef="let element">{{element?.cons_errados}}</td>
-            </ng-container>
-            
-            <ng-container matColumnDef="cons_media">
-              <th mat-header-cell *matHeaderCellDef>Media</th>
-              <td mat-cell *matCellDef="let element">{{element?.cons_media?.toFixed(2)}}</td>
-            </ng-container>
-            
-            <ng-container matColumnDef="cons_total">
-              <th mat-header-cell *matHeaderCellDef>Total</th>
-              <td mat-cell *matCellDef="let element">{{element?.cons_total}}</td>
-            </ng-container>
-              </table>
-            </div>
           </div>
         </div>
+      </div>
+    </div>
       <!-- </mat-grid-tile> -->
     <!-- </mat-grid-list> -->
 <!--     
@@ -154,10 +25,10 @@
   </div>
 } -->
 
-<ul>
+<!-- <ul>
 @for (clickedRow of clickedRows; track clickedRow) {
   <li>{{clickedRow.nome}} {{clickedRow.pros_media.toFixed(2)}}</li>
 }
-</ul>
-</div>
+</ul> -->
+  </div>
 </div>

@@ -16,29 +16,9 @@ import {
   MatDialogTitle,
 } from '@angular/material/dialog';
 import {MatGridListModule} from '@angular/material/grid-list';
-
-export interface DialogData{
-
-  id_time_a: number;
-  id_time_b: number;
-  id_jogador_a: number;
-  id_jogador_b: number;
-  id_campeonato: number;
-}
-
-export interface Fundamentos {
-  nome: string;
-  qtdJogos: number;
-  pros_certos: number;
-  pros_errados: number;
-  pros_total: number;
-  pros_media: number;
-  cons_certos: number;
-  cons_errados: number;
-  cons_total: number;
-  cons_media: number;
-  
-}
+import { DialogData } from '../interfaces/DialogData';
+import { Fundamentos } from '../interfaces/Fundamentos';
+import { Estatisticas } from '../interfaces/Estatisticas';
 
 @Component({
   selector: 'dialogComponent',
@@ -79,55 +59,60 @@ export class DialogComponent {
   fundamento_equipe_a?: Fundamentos[] = [];
   fundamento_equipe_b?: Fundamentos[] = [];
   
+  estatisticas: Estatisticas[] = [];
+
   private routeSub!: Subscription;
   displayedColumns: string[] = ['nome','qtdJogos','pros_certos','pros_errados','pros_media','pros_total','cons_certos','cons_errados','cons_media','cons_total'];
 
   constructor(private footyService: footyService, private route: ActivatedRoute, private router: Router) 
   {
-    this.ngInit();
+   
   }
 
-  ngInit(): void
+  ngOnInit(): void
   { 
-    console.log(this.data);
+   
     this.id_campeonato = this.data.id_campeonato;
-    this.id_equipe_a = this.data.id_time_a;
-    this.id_equipe_b = this.data.id_time_b;
-
+    this.id_equipe_a = this.data.item.mandante.id;
+    this.id_equipe_b = this.data.item.visitante.id;
+    
     this.load();
-    // this.routeSub = this.route.params.subscribe(params => {
-      
-    //   this.id_campeonato = params['id_campeonato'];
-    //   this.id_equipe_a = params['id_equipe_a'];
-    //   this.id_equipe_b = params['id_equipe_b'];
-    //   this.load();
-    // });
+
+    // let stats: Estatisticas = {
+    //     mandante = {
+    //       nome: this.fundamento_equipe_a.
+    //     }
+    // }
+ 
   }
 
-  load(){
+  async load(){
 
-    // console.log("carrega fundamentos a: ", this.id_equipe_a);
-    this.footyService.obterListaFundamentos(this.id_campeonato,this.id_equipe_a,'PROS').subscribe(
+    await this.footyService.obterListaFundamentos(this.id_campeonato,this.id_equipe_a).subscribe(
       (response) => {
+        
         this.fundamento_equipe_a = response;
-        // console.log(this.fundamento_equipe_a);
+       
       },
       (error) => {
         console.error('Erro na requisição:', error);
       }
     );
 
-    // console.log("carrega fundamentos b: ", this.id_equipe_b);
-    this.footyService.obterListaFundamentos(this.id_campeonato,this.id_equipe_b, 'PROS').subscribe(
+    await this.footyService.obterListaFundamentos(this.id_campeonato,this.id_equipe_b).subscribe(
       (response) => {
-        // console.log(response);
+        
         this.fundamento_equipe_b = response;
-        // console.log(this.fundamento_equipe_b);
+       
       },
       (error) => {
         console.error('Erro na requisição:', error);
       }
     );
+
+    console.log("fundamentos_a", this.fundamento_equipe_a);
+    console.log("fundamentos_b", this.fundamento_equipe_b);
+
   }
 
   ngOnDestroy(): void {

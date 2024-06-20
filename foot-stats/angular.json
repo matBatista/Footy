@@ -35,7 +35,9 @@
               "@angular/material/prebuilt-themes/azure-blue.css",
               "src/styles.scss"
             ],
-            "scripts": []
+            "scripts": [
+              "@headlessui/tailwindcss/dist/headlessui.esm.js"
+            ]
           },
           "configurations": {
             "production": {
@@ -95,7 +97,9 @@
               "@angular/material/prebuilt-themes/azure-blue.css",
               "src/styles.scss"
             ],
-            "scripts": []
+            "scripts": [
+              "@headlessui/tailwindcss/dist/headlessui.esm.js"
+            ]
           }
         }
       }

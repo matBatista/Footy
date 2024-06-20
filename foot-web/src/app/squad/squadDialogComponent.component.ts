@@ -1,4 +1,4 @@
-import { Component, inject, model } from '@angular/core';
+import { Component, inject, model, numberAttribute } from '@angular/core';
 import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
 import { footyService } from '../service/footyService.service';
 import { CommonModule } from '@angular/common';
@@ -16,22 +16,10 @@ import {
   MatDialogTitle,
 } from '@angular/material/dialog';
 import {MatGridListModule} from '@angular/material/grid-list';
+import { DialogData } from '../interfaces/DialogData';
+import { Escalacao } from '../interfaces/Escalacao';
+import { Jogador } from '../interfaces/Jogador';
 
-export interface DialogData{
-  id_partida: number;
-  id_time_a: number;
-  id_time_b: number;
-  id_jogador_a: number;
-  id_jogador_b: number;
-  id_campeonato: number;
-}
-
-export interface Escalacao {
-  pos: string;
-  nome: string;
-  numero: string;
-  atividade: string;
-}
 
 @Component({
   selector: 'squadDialogComponent',
@@ -64,6 +52,8 @@ export class SquadDialogComponent {
   id_partida: number | null = null;
   clickedRows = new Set<Escalacao>();
   
+  partida?: any;
+  escalacao?: Escalacao[] = [];
   escalacao_mandante?: Escalacao[] = [];
   escalacao_visitante?: Escalacao[] = [];
   
@@ -77,9 +67,13 @@ export class SquadDialogComponent {
 
   ngInit(): void
   { 
-    console.log(this.data);
-    this.id_partida = this.data.id_partida;
-
+    
+    
+    this.partida = this.data.item.partida;
+    this.id_partida = this.partida.id;
+    
+    console.log(this.partida);
+    
     this.load();
     // this.routeSub = this.route.params.subscribe(params => {
     //   this.id_campeonato = params['id_campeonato'];
@@ -91,15 +85,67 @@ export class SquadDialogComponent {
 
   load(){
 
-    console.log("escalacao partida: ", this.id_partida);
     this.footyService.obterEscalacaoPartida(this.id_partida).subscribe(
       (response) => {
+        console.log("escalacao partida: ", response);
         // this.escalacao_visitante = response;
         // console.log(response);
-        this.escalacao_mandante = response.titular.mandante;
-        this.escalacao_visitante = response.titular.visitante;
-        console.log("mandante", this.escalacao_mandante);
-        console.log("visitante", this.escalacao_visitante);
+
+        var m = response.titular.mandante;
+        var v = response.titular.visitante;
+
+        let x = 0;
+        while(x < 11){
+
+
+          let j_m: Jogador = {
+            pos: m[x].posicao,
+            nome: m[x].nomeJogador,
+            numero: m[x].numeroDaCamisa.toString().padStart(2, '0'),
+            gols: m[x].gols,
+            gols_contra: m[x].golsContra,
+            cartao: 0,
+            sub: m[x].foiSubstituido ? {
+              pos: m[x].foiSubstituido.posicao,
+              nome: m[x].foiSubstituido.nomeJogador,
+              numero: m[x].foiSubstituido.numeroDaCamisa.toString().padStart(2, '0'),
+              gols: m[x].foiSubstituido.gols,
+              gols_contra: m[x].foiSubstituido.golsContra,
+              cartao: 0,
+              sub: null
+            } : null
+          }
+          let j_v: Jogador = {
+            pos: v[x].posicao,
+            nome: v[x].nomeJogador,
+            numero: v[x].numeroDaCamisa.toString().padStart(2, '0'),
+            gols: v[x].gols,
+            gols_contra: v[x].golsContra,
+            cartao: 0,
+            sub: v[x].foiSubstituido ? {
+              pos: v[x].foiSubstituido.posicao,
+              nome: v[x].foiSubstituido.nomeJogador,
+              numero: v[x].foiSubstituido.numeroDaCamisa.toString().padStart(2, '0'),
+              gols: v[x].foiSubstituido.gols,
+              gols_contra: v[x].foiSubstituido.golsContra,
+              cartao: 0,
+              sub: null
+            } : null
+          }
+          let item: Escalacao = {
+            mandante: j_m,
+            visitante: j_v
+          };
+
+          this.escalacao?.push(item);
+
+          x++;
+        }
+        
+        // this.escalacao_mandante = response.titular.mandante;
+        // this.escalacao_visitante = response.titular.visitante;
+        // console.log("escalacao", this.escalacao);
+        // console.log("visitante", this.escalacao_visitante);
       },
       (error) => {
         console.error('Erro na requisição:', error);
@@ -115,5 +161,10 @@ export class SquadDialogComponent {
     }
   }
 
+  createArray(length: number): number[] {
+
+    return new Array(length).fill(0).map((_, i) => i);
+
+  }
   
 }

@@ -55,7 +55,7 @@
             <mat-menu #camponatoMenu="matMenu">
               <div *ngFor="let item of campeonato.campeonatos">
                 <button mat-menu-item (click)="navigateToRoute('campeonato',{item})"> 
-                  <img [src]="item.urlLogo" alt="{{ item.nome }} Logo">
+                  <img [src]="item.urlLogo" alt="{{ item.nome }} Logo" style="height: 60px;">
                   {{ item.nome }} 
                 </button>
               </div>
