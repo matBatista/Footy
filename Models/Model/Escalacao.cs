@@ -15,6 +15,8 @@ namespace Models.Model
         public Titular Titular { get; set; }
     }
 
+
+
     public class Reserva
     {
         public List<Jogador> Mandante { get; set; }
@@ -82,5 +84,23 @@ namespace Models.Model
         public int? Ranking { get; set; }
         public string Tempo { get; set; }
         public bool Titular { get; set; }
+    }
+
+    public class EscalcaoPartida
+    {
+        public JogadorView mandante { get; set; }
+        public JogadorView visitante { get; set; }
+    }
+
+    public class JogadorView
+    {
+        public string pos { get; set; }
+        public string nome { get; set; }
+        public int? numero { get; set; }
+        public int? gols { get; set; }
+        public int? gols_contra { get; set; }
+        public int? cartao { get; set; }
+        public int? cartao_vermelho { get; set; }
+        public JogadorView sub { get; set; }
     }
 }

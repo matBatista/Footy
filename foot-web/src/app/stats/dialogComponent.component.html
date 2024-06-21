@@ -2,33 +2,99 @@
   <!-- <h3>Partida</h3> -->
   <div class="dialogo__campos">
     <div class="container">
-      <div class="container text-center">
-        <h3>Estatisticas</h3>
-      </div>
-      <div class="container">
-        <div class="container text-start">
-          <div *ngFor="let item of estatisticas">
+      <div class="container text-start estatisticas">
+        <div class="row text-center border-bottom times">
+          <div class="col-sm-3">
+          </div>
+          <div class="col-sm-4">
+            <img mat-card-image src="{{this.data.item.mandante.urlLogo}}">
+            {{ this.data.item.mandante.sigla  }}
+          </div>
+          <div class="col-sm-1">
+          </div>
+          <div class="col-sm-4">
+            <img mat-card-image src="{{this.data.item.visitante.urlLogo}}">
+            {{this.data.item.visitante.sigla}}
+          </div>
+        </div>
+          <div class="row border-bottom header">
+            <div class="col-sm-3">
+            </div>
+            <div class="col-sm-1">
+              Certos
+            </div>
+            <div class="col-sm-1">
+              Errados
+            </div>
+            <div class="col-sm-1">
+              Total
+            </div>
+            <div class="col-sm-1">
+              Media
+            </div>
+            <div class="col-sm-1">
+            </div>
+            <div class="col-sm-1">
+              Certos
+            </div>
+            <div class="col-sm-1">
+              Errados
+            </div>
+            <div class="col-sm-1">
+              Total
+            </div>
+            <div class="col-sm-1">
+              Media
+            </div>
+          </div>
+        <div *ngFor="let item of this.estatisticas">
+          <div class="row border-bottom">
+            <div class="col-sm-3">
+              {{item.nome}}
+            </div>
+            <div class="col-sm-1">
+              {{item.mandante.pros_certos}}             
+            </div>
+            <div class="col-sm-1">
+              {{item.visitante.pros_errados}}
+            </div>
+            <div class="col-sm-1">
+              {{item.mandante.pros_total}}
+            </div>
+            @if (item.visitante.pros_media < item.mandante.pros_media) {
+              <div class="col-sm-1 bg-success-subtle">
+                {{item.mandante.pros_media.toFixed(2)}}
+              </div>
+            }@else{
+              <div class="col-sm-1 bg-danger-subtle">
+                {{item.mandante.pros_media.toFixed(2)}}
+              </div>
+            }
 
+            <div class="col-sm-1">
+            </div>
+            <div class="col-sm-1">
+              {{item.visitante.pros_certos}}
+            </div>
+            <div class="col-sm-1">
+              {{item.visitante.pros_errados}}
+            </div>
+            <div class="col-sm-1">
+              {{item.visitante.pros_total}}
+            </div>
+
+            @if (item.visitante.pros_media > item.mandante.pros_media) {
+              <div class="col-sm-1 bg-success-subtle">
+                {{item.visitante.pros_media.toFixed(2)}}
+              </div>
+            }@else{
+              <div class="col-sm-1 bg-danger-subtle">
+                {{item.visitante.pros_media.toFixed(2)}}
+              </div>
+            }
           </div>
         </div>
       </div>
     </div>
-      <!-- </mat-grid-tile> -->
-    <!-- </mat-grid-list> -->
-<!--     
-    
-@if (clickedRows.size) {
-  <div>
-    <h3>
-      Selecionados
-    </h3>
-  </div>
-} -->
-
-<!-- <ul>
-@for (clickedRow of clickedRows; track clickedRow) {
-  <li>{{clickedRow.nome}} {{clickedRow.pros_media.toFixed(2)}}</li>
-}
-</ul> -->
   </div>
 </div>

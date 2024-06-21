@@ -88,15 +88,16 @@ export class SquadDialogComponent {
     this.footyService.obterEscalacaoPartida(this.id_partida).subscribe(
       (response) => {
         console.log("escalacao partida: ", response);
+        this.escalacao = response;
         // this.escalacao_visitante = response;
         // console.log(response);
-
+        /*
         var m = response.titular.mandante;
         var v = response.titular.visitante;
 
         let x = 0;
-        while(x < 11){
-
+        while(x < 11)
+        {
 
           let j_m: Jogador = {
             pos: m[x].posicao,
@@ -141,7 +142,7 @@ export class SquadDialogComponent {
 
           x++;
         }
-        
+        */
         // this.escalacao_mandante = response.titular.mandante;
         // this.escalacao_visitante = response.titular.visitante;
         // console.log("escalacao", this.escalacao);

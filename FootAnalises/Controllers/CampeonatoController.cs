@@ -63,7 +63,7 @@ namespace FootAnalises.Controllers
         [Route("/escalacao_partida")]
         public async Task<ActionResult> RetornaEscalacao(int id_partida)
         {
-            var list = await _footService.RetornaEscalacao(id_partida);
+            var list = await _footService.RetornaEscalacaoPartida(id_partida);
 
             return Ok(list);
         }

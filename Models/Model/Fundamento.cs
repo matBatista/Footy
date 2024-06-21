@@ -57,7 +57,6 @@ namespace Models.Model
         public List<ValoresFundamento> detalhes { get; set; }
     }
 
-
     public class FundamentoStats
     {
         public string nome { get; set; }
@@ -70,7 +69,13 @@ namespace Models.Model
         public double? cons_errados { get; set; }
         public double? cons_total { get; set; }
         public double? cons_media { get; set; }
-
     }
+
+    public class Estatistica
+    {
+        public string nome { get; set; }
+        public FundamentoStats mandante { get; set; }
+        public FundamentoStats visitante { get; set; }
+    }   
 
 }

@@ -43,10 +43,11 @@ namespace FootAnalises.Controllers
         }
 
         [HttpGet]
-        [Route("/equipe_fundamento")]
-        public async Task<ActionResult> GetFundamentosEquipe(int id_campeonato, int id_equipe)
+        [Route("/estatisticas_equipes")]
+        public async Task<ActionResult> RetornaEstatisticas(int id_campeonato, int id_equipe_a, int id_equipe_b)
         {
-            List<FundamentoStats> list = await _footService.RetornaFundamentosEquipe(id_campeonato, id_equipe);
+            List<Estatistica> list = await _footService.RetornaEstatisticas(id_campeonato, id_equipe_a, id_equipe_b);
+
             return Ok(list);
         }
        

@@ -1,59 +1,31 @@
 
 .dialogo{
   margin-top: 15px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: end;
-  align-items: baseline;
-  position: relative;
-  &__campos{
-    width: 100%;
-    &_titulo{
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      h3{
-        font-size: 2rem;
-        font-weight: 500;
-        letter-spacing: 0rem;
-        color: var(--gray-900);
-      }
-    }
-  }
-  &__table{
-    margin-top: 30px;
-  }
-  mat-grid-list{
-    position: absolute;
-    margin-top: 10px;
-  }
+  font-size: 15px;
 }
-
-
-.mat-mdc-row .mat-mdc-cell {
-  border-bottom: 1px solid transparent;
-  border-top: 1px solid transparent;
-  cursor: pointer;
+.table{
+  padding-left: 10px;
+  padding-right: 10px;
 }
-
-.ng-container{
-  flex: 0 0 100px; 
-}
-  
-.mat-mdc-row:hover .mat-mdc-cell {
-  border-color: currentColor;
-}
-
-
-.mat-mdc-row{
-  padding-bottom: 0px;
-}
-  
-.demo-row-is-clicked 
-{
+.header{
   font-weight: bold;
 }
-
-.div-mat-dialog{
-  margin-top: 0px;
+.content{
+  padding-left: 7px;
+}
+.col-sm-1 {
+  flex: 0 0 auto;
+  width: 8%;
+  padding: 0;
+}
+.estatisticas{
+  padding-top: 15px;
+}
+.times{
+  padding-bottom: 20px;
+  font-weight: bold;
+  font-size: 18px;
+  img{
+    width: 30px;
+  }
 }
