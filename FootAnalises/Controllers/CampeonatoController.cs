@@ -5,6 +5,7 @@ using Models.Model;
 using Newtonsoft.Json;
 using Services.Interfaces;
 using System.Net.Http.Headers;
+using SrvGeneral;
 
 namespace FootAnalises.Controllers
 {
@@ -22,12 +23,20 @@ namespace FootAnalises.Controllers
             _footService = footService; 
         }
         
+        //http://localhost:5169/campeonato
         [HttpGet]
         public async Task<ActionResult> Get()
         {
-            ObjectCampeonato camp = await _footService.RetornaCampeonatos();
 
-            return Ok(camp);
+            string  teste = "";
+
+            General srv = new General();
+            
+            teste = srv.GetNewString();
+
+            //ObjectCampeonato camp = await _footService.RetornaCampeonatos();
+
+            return Ok(teste);
         }
 
         [HttpGet]

@@ -22,6 +22,9 @@
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.1" />
+    <Reference Include="SrvGeneral">
+      <HintPath>/Users/mbatista/Documents/Git/Services/SrvGeneral/Bin/debug/net8.0/SrvGeneral.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
