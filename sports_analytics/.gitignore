@@ -1,0 +1,8 @@
+*.exe
+*.dll
+*.pdb
+.vs/
+obj/
+bin/
+sports_analytics/venv/
+sports_analytics/venv/*

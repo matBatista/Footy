@@ -1,0 +1,10 @@
+home_goals_for_avg
+home_goals_against_avg
+home_goal_diff_avg
+home_win_rate
+away_goals_for_avg
+away_goals_against_avg
+away_goal_diff_avg
+away_win_rate
+home_top_scorer_goals
+away_top_scorer_goals

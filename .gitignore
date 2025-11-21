@@ -5,3 +5,5 @@
 .vs/
 obj/
 bin/
+/sports_analytics/venv
+.DS_Store
