@@ -8,6 +8,7 @@ const predictBtn = document.getElementById("predictBtn");
 const predictionResult = document.getElementById("predictionResult");
 const loadFixturesBtn = document.getElementById("loadFixturesBtn");
 const fixturesContainer = document.getElementById("fixturesContainer");
+const fixturesRoundLabel = document.getElementById("fixturesRoundLabel");
 
 const competitionSelect = document.getElementById("competitionCode");
 const nSeasonsInput = document.getElementById("nSeasons");
@@ -143,6 +144,9 @@ async function loadFixturesWithPredictions() {
         '<span class="text-red-400">Error: ' +
         (data.detail || "Unknown error") +
         "</span>";
+      if (fixturesRoundLabel) {
+        fixturesRoundLabel.textContent = "";
+      }
       return;
     }
 
@@ -150,15 +154,29 @@ async function loadFixturesWithPredictions() {
     if (fixtures.length === 0) {
       fixturesContainer.innerHTML =
         '<span class="text-slate-400 text-xs">No scheduled fixtures available.</span>';
+      if (fixturesRoundLabel) {
+        fixturesRoundLabel.textContent = "";
+      }
       return;
     }
 
     // descobrir qual é a rodada atual
     let filteredFixtures = fixtures;
+    let rodada = null;
     const sample = fixtures.find((f) => f.matchday != null);
     if (sample) {
-      const rodada = sample.matchday;
+      rodada = sample.matchday;
       filteredFixtures = fixtures.filter((f) => f.matchday === rodada);
+    }
+
+    // atualizar label de rodada
+    if (fixturesRoundLabel) {
+      if (rodada != null) {
+        fixturesRoundLabel.textContent =
+          "Rodada " + rodada + " – " + competition;
+      } else {
+        fixturesRoundLabel.textContent = "";
+      }
     }
 
     // montar tabela
@@ -196,6 +214,9 @@ async function loadFixturesWithPredictions() {
     console.error("Error loading fixtures:", err);
     fixturesContainer.innerHTML =
       '<span class="text-red-400">Failed to load fixtures.</span>';
+    if (fixturesRoundLabel) {
+      fixturesRoundLabel.textContent = "";
+    }
   }
 }
 

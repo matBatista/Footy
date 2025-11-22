@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from src.data_loader import get_data_path
 
 
@@ -76,7 +77,20 @@ def _add_rolling_form_features(team_df: pd.DataFrame, n_games: int = 5) -> pd.Da
       - goals_against_avg
       - goal_diff_avg
       - win_rate
+      - points_avg
+      - momentum
+      - clean_sheet_rate
+      - conceded_avg
+      - weighted_points (more weight to recent matches)
     """
+
+    def _weighted_avg_points(x: np.ndarray) -> float:
+        # Weighted average of points with higher weight for more recent games
+        n = len(x)
+        if n == 0:
+            return 0.0
+        weights = np.arange(1, n + 1, dtype=float)
+        return float((x * weights).sum() / weights.sum())
 
     def _apply_group(g: pd.DataFrame) -> pd.DataFrame:
         g = g.sort_values("date")
@@ -85,6 +99,29 @@ def _add_rolling_form_features(team_df: pd.DataFrame, n_games: int = 5) -> pd.Da
         g["goals_against_avg"] = g["goals_against"].shift(1).rolling(n_games, min_periods=1).mean()
         g["goal_diff_avg"] = (g["goals_for"] - g["goals_against"]).shift(1).rolling(n_games, min_periods=1).mean()
         g["win_rate"] = g["result"].shift(1).eq(1).rolling(n_games, min_periods=1).mean()
+
+        # Add advanced rolling features
+        # Points: win=3, draw=1, loss=0
+        g["points"] = g["result"].map({1: 3, 0: 1, -1: 0})
+        g["points_avg"] = g["points"].shift(1).rolling(n_games, min_periods=1).mean()
+
+        # Momentum = sum of last N points
+        g["momentum"] = g["points"].shift(1).rolling(n_games, min_periods=1).sum()
+
+        # Clean sheet rate: goals_against == 0
+        g["clean_sheet_rate"] = g["goals_against"].shift(1).eq(0).rolling(n_games, min_periods=1).mean()
+
+        # Conceded average
+        g["conceded_avg"] = g["goals_against"].shift(1).rolling(n_games, min_periods=1).mean()
+
+        # Weighted points form (more weight to the most recent matches)
+        g["weighted_points"] = (
+            g["points"]
+            .shift(1)
+            .rolling(n_games, min_periods=1)
+            .apply(_weighted_avg_points, raw=True)
+        )
+
         return g
 
     team_df = team_df.groupby("team", group_keys=False).apply(_apply_group)
@@ -153,24 +190,56 @@ def build_match_feature_table(df: pd.DataFrame, n_games: int = 5) -> pd.DataFram
     away = team_df[team_df["is_home"] == 0].copy()
 
     home_feats = home[
-        ["match_idx", "goals_for_avg", "goals_against_avg", "goal_diff_avg", "win_rate"]
+        [
+            "match_idx",
+            "goals_for_avg",
+            "goals_against_avg",
+            "goal_diff_avg",
+            "win_rate",
+            "points_avg",
+            "momentum",
+            "clean_sheet_rate",
+            "conceded_avg",
+            "weighted_points",
+        ]
     ].rename(
         columns={
             "goals_for_avg": "home_goals_for_avg",
             "goals_against_avg": "home_goals_against_avg",
             "goal_diff_avg": "home_goal_diff_avg",
             "win_rate": "home_win_rate",
+            "points_avg": "home_points_avg",
+            "momentum": "home_momentum",
+            "clean_sheet_rate": "home_clean_sheet_rate",
+            "conceded_avg": "home_conceded_avg",
+            "weighted_points": "home_weighted_points",
         }
     )
 
     away_feats = away[
-        ["match_idx", "goals_for_avg", "goals_against_avg", "goal_diff_avg", "win_rate"]
+        [
+            "match_idx",
+            "goals_for_avg",
+            "goals_against_avg",
+            "goal_diff_avg",
+            "win_rate",
+            "points_avg",
+            "momentum",
+            "clean_sheet_rate",
+            "conceded_avg",
+            "weighted_points",
+        ]
     ].rename(
         columns={
             "goals_for_avg": "away_goals_for_avg",
             "goals_against_avg": "away_goals_against_avg",
             "goal_diff_avg": "away_goal_diff_avg",
             "win_rate": "away_win_rate",
+            "points_avg": "away_points_avg",
+            "momentum": "away_momentum",
+            "clean_sheet_rate": "away_clean_sheet_rate",
+            "conceded_avg": "away_conceded_avg",
+            "weighted_points": "away_weighted_points",
         }
     )
 
