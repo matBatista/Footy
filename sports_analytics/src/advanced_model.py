@@ -69,7 +69,8 @@ def build_dataset(df: pd.DataFrame, n_games: int = 5):
         )
 
     # -------------------------------------------------
-    # Step 2 Pro: xG Ability (xGAI) + artilheiro normalizado
+    # xG Ability fake + artilheiro normalizado
+    # (Step 2 / 4 do nosso plano)
     # -------------------------------------------------
     scorer_cols = {"home_top_scorer_goals", "away_top_scorer_goals"}
     wp_cols = {"home_weighted_points", "away_weighted_points"}
@@ -98,7 +99,7 @@ def build_dataset(df: pd.DataFrame, n_games: int = 5):
             if col not in feat_df.columns:
                 feat_df[col] = 1.0  # neutro
 
-        # xG Ability para o mandante
+        # xG Ability para o mandante (FAKE xG)
         feat_df["home_xg_ability"] = (
             feat_df["home_attack_strength"].fillna(1.0)
             * feat_df["away_defense_weakness"].fillna(1.0)
@@ -107,7 +108,7 @@ def build_dataset(df: pd.DataFrame, n_games: int = 5):
             + feat_df["home_top_scorer_norm"].fillna(0.0) * 0.3
         )
 
-        # xG Ability para o visitante
+        # xG Ability para o visitante (FAKE xG)
         feat_df["away_xg_ability"] = (
             feat_df["away_attack_strength"].fillna(1.0)
             * feat_df["home_defense_weakness"].fillna(1.0)
@@ -122,7 +123,7 @@ def build_dataset(df: pd.DataFrame, n_games: int = 5):
         )
 
     # -------------------------------------------------
-    # Step 3: "Posição na tabela" aproximada (ranking por força)
+    # "Posição na tabela" aproximada (ranking por força)
     # -------------------------------------------------
     rank_base_cols = {
         "home_team",
@@ -166,53 +167,6 @@ def build_dataset(df: pd.DataFrame, n_games: int = 5):
         )
 
     # -------------------------------------------------
-    # Step 4: goal_expectancy (fake-xG baseado na média de gols da liga)
-    # -------------------------------------------------
-    league_avg_goals = None
-    if {"home_goals", "away_goals"}.issubset(df.columns):
-        # média de gols por jogo = (home+away) / nº de partidas
-        total_goals = (df["home_goals"] + df["away_goals"]).sum()
-        num_matches = len(df)
-        if num_matches > 0:
-            league_avg_goals = total_goals / num_matches
-        else:
-            league_avg_goals = 2.5  # fallback
-    elif base_cols.issubset(feat_df.columns):
-        # fallback: usa média das médias de gols (approx)
-        league_avg_goals = (
-            feat_df["home_goals_for_avg"].mean()
-            + feat_df["away_goals_for_avg"].mean()
-        )
-    else:
-        league_avg_goals = 2.5  # valor padrão
-        print(
-            "[advanced_model] Aviso: não foi possível calcular média real de gols "
-            "da liga; usando fallback 2.5."
-        )
-
-    # garante colunas necessárias
-    for col in [
-        "home_attack_strength",
-        "home_defense_weakness",
-        "away_attack_strength",
-        "away_defense_weakness",
-    ]:
-        if col not in feat_df.columns:
-            feat_df[col] = 1.0
-
-    # goal_expectancy para mandante e visitante
-    feat_df["home_goal_expectancy"] = (
-        feat_df["home_attack_strength"].fillna(1.0)
-        * feat_df["away_defense_weakness"].fillna(1.0)
-        * league_avg_goals
-    )
-    feat_df["away_goal_expectancy"] = (
-        feat_df["away_attack_strength"].fillna(1.0)
-        * feat_df["home_defense_weakness"].fillna(1.0)
-        * league_avg_goals
-    )
-
-    # -------------------------------------------------
     # Seleção das features
     # -------------------------------------------------
     desired_feature_cols = [
@@ -228,13 +182,12 @@ def build_dataset(df: pd.DataFrame, n_games: int = 5):
         "home_weighted_points",
         "home_top_scorer_goals",
         "home_top_scorer_norm",
-        # home side - força ofensiva/defensiva, tabela e xG
+        # home side - força ofensiva/defensiva e tabela
         "home_attack_strength",
         "home_defense_weakness",
         "home_xg_ability",
         "home_rank",
         "home_rank_norm",
-        "home_goal_expectancy",
         # away side - forma e gols
         "away_goals_for_avg",
         "away_goals_against_avg",
@@ -247,13 +200,12 @@ def build_dataset(df: pd.DataFrame, n_games: int = 5):
         "away_weighted_points",
         "away_top_scorer_goals",
         "away_top_scorer_norm",
-        # away side - força ofensiva/defensiva, tabela e xG
+        # away side - força ofensiva/defensiva e tabela
         "away_attack_strength",
         "away_defense_weakness",
         "away_xg_ability",
         "away_rank",
         "away_rank_norm",
-        "away_goal_expectancy",
         # diferença de posição
         "rank_diff",
     ]
@@ -289,9 +241,8 @@ def train_match_outcome_model(df: pd.DataFrame, n_games: int = 5):
     Treina um modelo RandomForest para prever o resultado do jogo (H/D/A).
 
     - Usa features de forma, pontos, momentum, defesa, artilheiro,
-      força ofensiva/defensiva, xG Ability (xGAI),
-      posição aproximada na tabela (ranking baseado em weighted_points)
-      e goal_expectancy (fake-xG baseado na média de gols da liga).
+      força ofensiva/defensiva, xG Ability (fake) e posição aproximada
+      na tabela (ranking baseado em weighted_points).
     - Usa class_weight='balanced' para lidar com desbalanceamento.
     - Faz cross-validation com F1-macro (multiclasse).
 

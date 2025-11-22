@@ -14,7 +14,6 @@ home_defense_weakness
 home_xg_ability
 home_rank
 home_rank_norm
-home_goal_expectancy
 away_goals_for_avg
 away_goals_against_avg
 away_goal_diff_avg
@@ -31,5 +30,4 @@ away_defense_weakness
 away_xg_ability
 away_rank
 away_rank_norm
-away_goal_expectancy
 rank_diff

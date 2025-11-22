@@ -4,17 +4,15 @@ from typing import List
 
 def get_current_season() -> int:
     """
-    Return the season number for football-data.org style European seasons.
+    Retorna a temporada atual no padrão football-data.org (Europa).
 
-    Convention:
-      - Season 2023 represents 2023/2024
-      - Season 2024 represents 2024/2025
+    Convenção:
+      - 2023 representa 2023/2024
+      - 2024 representa 2024/2025
 
-    Logic:
-      - If today is between July (7) and December (12) inclusive:
-          season = current year
-      - If today is between January (1) and June (6) inclusive:
-          season = current year - 1
+    Regra:
+      - De julho (7) a dezembro (12): season = ano atual
+      - De janeiro (1) a junho (6):   season = ano atual - 1
     """
     today = datetime.utcnow()
     year = today.year
@@ -25,14 +23,12 @@ def get_current_season() -> int:
         return year - 1
 
 
-def get_training_seasons(n_past: int = 3) -> List[int]:
+def get_training_seasons(current_season: int, n_past: int = 3) -> List[int]:
     """
-    Return a list of seasons to be used for training, immediately before the
-    current season.
+    Retorna uma lista de temporadas ANTERIORES à temporada atual informada.
 
-    Example:
-      If current season = 2025 and n_past = 3:
+    Exemplo:
+      current_season = 2025, n_past = 3
         -> [2024, 2023, 2022]
     """
-    current = get_current_season()
-    return [current - i for i in range(1, n_past + 1)]
+    return [current_season - i for i in range(1, n_past + 1)]

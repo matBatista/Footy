@@ -1,425 +1,593 @@
-import json
-from pathlib import Path
-from functools import lru_cache
-from typing import Dict, List, Optional
+from typing import List, Optional
+import os
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from joblib import dump, load
+from pydantic import BaseModel
+from joblib import load, dump
 
-from src.advanced_model import train_match_outcome_model
+from src.data_loader import load_matches, get_data_path
 from src.features import build_match_feature_table
 from src.football_data_api import fetch_competition_matches_df, FootballDataApiError
+from src.advanced_model import train_match_outcome_model, build_dataset
+from src.season_utils import get_current_season, get_training_seasons
+from src.xg_utils import calibrate_goal_expectancy, match_outcome_probabilities
 
-# -------------------------------------------------------------------
+
+# =============================================================================
+# Configuração básica
+# =============================================================================
+
+# Modelo "genérico" atual em memória (último treino, qualquer liga)
+MODEL_PATH = "models/advanced_model_generic.joblib"
+FEATURE_COLS_PATH = "models/advanced_model_feature_cols_generic.txt"
+
+# CSV local default (para debug / fallback, se quiser)
+DATA_FILENAME = "matches_pl_2023.csv"
+
+# Estrutura em memória
+_model = None  # modelo carregado
+_feature_cols: List[str] = []  # lista de colunas de features (na ordem usada no treino)
+_feature_df: Optional[pd.DataFrame] = None  # feature table completa (todas as partidas da liga)
+
+
+# =============================================================================
+# Schemas Pydantic (request/response)
+# =============================================================================
+
+
+class TrainRequest(BaseModel):
+    competition_code: str  # e.g., "PL", "BSA"
+    season: Optional[int] = None  # se None, usamos get_current_season
+    n_past_seasons: int = 3
+    n_games: int = 10
+
+
+class OutcomeProbs(BaseModel):
+    home: float
+    draw: float
+    away: float
+
+
+class FixtureWithPrediction(BaseModel):
+    utc_date: str
+    match_id: int
+    competition_code: str
+    season: int
+    matchday: Optional[int] = None
+    home_team: str
+    away_team: str
+    home_top_scorer_goals: Optional[float] = None
+    away_top_scorer_goals: Optional[float] = None
+
+    # Probabilidades vindas do modelo de classificação (RandomForest)
+    probabilities: OutcomeProbs
+
+    # Expected goals (fake xG) calibrados a partir de home_xg_ability / away_xg_ability
+    lambda_home: float
+    lambda_away: float
+
+    # Probabilidades de resultado derivadas do modelo Poisson (xG-based)
+    xg_probabilities: OutcomeProbs
+
+
+class FixturesWithPredictionsResponse(BaseModel):
+    fixtures: List[FixtureWithPrediction]
+
+
+class PredictionResponse(BaseModel):
+    home_team: str
+    away_team: str
+    home_top_scorer_goals: Optional[float] = None
+    away_top_scorer_goals: Optional[float] = None
+    probabilities: OutcomeProbs
+
+
+class TrainResponse(BaseModel):
+    message: str
+    competition_code: str
+    seasons_used: List[int]
+    n_games: int
+    accuracy: float
+    model_path: str
+    feature_cols_path: str
+
+
+# =============================================================================
 # FastAPI app + CORS
-# -------------------------------------------------------------------
-app = FastAPI(title="Footy Prob - Multi-league API")
+# =============================================================================
+
+app = FastAPI(
+    title="Footy Analytics API",
+    description="Backend para previsão de resultados de futebol usando modelo avançado.",
+    version="0.3.0",
+)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # ajuste se quiser restringir
-    allow_credentials=True,
+    allow_origins=["*"],  # em produção restringir
+    # allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# -------------------------------------------------------------------
-# Paths / globals
-# -------------------------------------------------------------------
-BASE_DIR = Path(__file__).resolve().parent
-MODELS_DIR = BASE_DIR / "models"
-MODELS_DIR.mkdir(exist_ok=True)
 
-# Guarda lista de times por liga (atualizada no treino)
-_TEAMS_BY_COMP: Dict[str, List[str]] = {}
-_LAST_TRAINED_COMP: Optional[str] = None
+# =============================================================================
+# Funções utilitárias
+# =============================================================================
 
 
-def get_model_paths(competition_code: str) -> Dict[str, Path]:
-    code = competition_code.upper()
-    return {
-        "model": MODELS_DIR / f"advanced_model_{code}.joblib",
-        "features": MODELS_DIR / f"feature_cols_{code}.txt",
-        "meta": MODELS_DIR / f"advanced_model_meta_{code}.json",
-    }
+def _load_model_and_features_from_disk() -> None:
+    """
+    Tenta carregar um modelo e a lista de feature columns do disco
+    (genéricos; último treino realizado).
+    """
+    global _model, _feature_cols
+
+    if os.path.exists(MODEL_PATH):
+        _model = load(MODEL_PATH)
+        print(f"[startup] Modelo carregado de {MODEL_PATH}")
+    else:
+        print(f"[startup] Modelo {MODEL_PATH} não encontrado; será treinado via /train_model.")
+
+    if os.path.exists(FEATURE_COLS_PATH):
+        with open(FEATURE_COLS_PATH, "r", encoding="utf-8") as f:
+            cols = [line.strip() for line in f if line.strip()]
+        _feature_cols = cols
+        print(f"[startup] Feature cols carregadas de {FEATURE_COLS_PATH}: {_feature_cols}")
+    else:
+        print(f"[startup] Arquivo {FEATURE_COLS_PATH} não encontrado; será preenchido no próximo treino.")
 
 
-def save_model_bundle(
-    competition_code: str,
-    model,
-    feature_cols: List[str],
-    *,
-    n_games: int,
-    season: int,
-) -> None:
-    paths = get_model_paths(competition_code)
+def _load_local_feature_df() -> None:
+    """
+    Carrega um CSV local e gera uma feature table simplificada (sem xG),
+    apenas para debug / fallback inicial. Depois de treinar via /train_model,
+    _feature_df será substituído pelo feat_df completo (com xG etc.).
+    """
+    global _feature_df
 
-    # modelo
-    dump(model, paths["model"])
+    csv_path = get_data_path(DATA_FILENAME)
+    if not os.path.exists(csv_path):
+        print(f"[startup] CSV local {csv_path} não encontrado. _feature_df ficará None.")
+        _feature_df = None
+        return
 
-    # feature cols
-    with paths["features"].open("w", encoding="utf-8") as f:
-        for col in feature_cols:
-            f.write(col + "\n")
-
-    # metadados
-    meta = {
-        "competition_code": competition_code,
-        "season": season,
-        "n_games": n_games,
-    }
-    with paths["meta"].open("w", encoding="utf-8") as f:
-        json.dump(meta, f, ensure_ascii=False, indent=2)
+    print(f"[startup] Carregando CSV local {csv_path}...")
+    df = load_matches(DATA_FILENAME)
+    _feature_df = build_match_feature_table(df, n_games=5)
+    print(f"[startup] Feature table local construída com shape: {_feature_df.shape}")
 
 
-@lru_cache(maxsize=16)
-def load_model_bundle(competition_code: str):
-    paths = get_model_paths(competition_code)
-    if not paths["model"].exists():
-        raise HTTPException(
-            status_code=404,
-            detail=f"Modelo para {competition_code} ainda não foi treinado.",
-        )
+@app.on_event("startup")
+def startup_event():
+    """
+    Evento de startup: tenta carregar modelo + features do disco e
+    uma feature_df local (para debug). Após o primeiro /train_model,
+    _feature_df passa a usar a tabela completa (build_dataset).
+    """
+    _load_model_and_features_from_disk()
+    _load_local_feature_df()
 
-    model = load(paths["model"])
 
-    if not paths["features"].exists():
+# =============================================================================
+# Endpoints básicos
+# =============================================================================
+
+
+@app.get("/")
+def read_root():
+    return {"status": "ok", "message": "Footy Analytics API is running"}
+
+
+@app.get("/health")
+def health_check():
+    """
+    Endpoint simples de health check.
+    """
+    return {"status": "healthy"}
+
+
+# =============================================================================
+# Endpoint: listar times conhecidos (com base na feature_df carregada)
+# =============================================================================
+
+
+@app.get("/teams")
+def get_teams():
+    """
+    Retorna a lista de times únicos presentes na feature table atual.
+
+    Observação: neste momento, usamos a feature_df carregada na memória, que
+    reflete a última liga/temporadas utilizadas. Em uma estrutura multi-liga
+    mais avançada, poderíamos ter /teams?competition_code=BSA etc.
+    """
+    if _feature_df is None:
+        raise HTTPException(status_code=500, detail="Feature table não carregada ainda.")
+
+    teams = sorted(
+        set(_feature_df["home_team"].dropna().unique())
+        | set(_feature_df["away_team"].dropna().unique())
+    )
+    return {"teams": teams}
+
+
+# =============================================================================
+# Endpoint: previsão para um confronto específico (usando o histórico atual)
+# (sem xG ainda, focado em modelo RF)
+# =============================================================================
+
+
+@app.get("/predict", response_model=PredictionResponse)
+def predict_match(
+    home_team: str = Query(..., description="Nome exato do time mandante"),
+    away_team: str = Query(..., description="Nome exato do time visitante"),
+):
+    """
+    Faz a previsão da probabilidade de H/D/A para um confronto específico,
+    usando o modelo carregado em memória e a feature_df atual.
+    """
+    if _model is None or _feature_df is None or not _feature_cols:
         raise HTTPException(
             status_code=500,
-            detail=f"Arquivo de features para {competition_code} não encontrado.",
+            detail="Modelo ou features não carregados. Treine via /train_model primeiro.",
         )
 
-    with paths["features"].open("r", encoding="utf-8") as f:
-        feature_cols = [line.strip() for line in f if line.strip()]
+    # Helper: pega última linha de features em que o time aparece como mandante
+    def _get_home_role_features(team_name: str) -> dict:
+        home_rows = _feature_df[_feature_df["home_team"] == team_name].sort_values("date")
+        if not home_rows.empty:
+            last = home_rows.iloc[-1]
+            return {
+                "home_goals_for_avg": float(last["home_goals_for_avg"]),
+                "home_goals_against_avg": float(last["home_goals_against_avg"]),
+                "home_goal_diff_avg": float(last["home_goal_diff_avg"]),
+                "home_win_rate": float(last["home_win_rate"]),
+                "home_top_scorer_goals": float(last.get("home_top_scorer_goals", 0.0)),
+            }
 
-    meta = {}
-    if paths["meta"].exists():
-        with paths["meta"].open("r", encoding="utf-8") as f:
-            meta = json.load(f)
+        # Se não achou como mandante, tenta como visitante e mapeia as colunas
+        away_rows = _feature_df[_feature_df["away_team"] == team_name].sort_values("date")
+        if away_rows.empty:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Nenhum histórico encontrado para o time {team_name}",
+            )
+        last = away_rows.iloc[-1]
+        return {
+            "home_goals_for_avg": float(last["away_goals_for_avg"]),
+            "home_goals_against_avg": float(last["away_goals_against_avg"]),
+            "home_goal_diff_avg": float(last["away_goal_diff_avg"]),
+            "home_win_rate": float(last["away_win_rate"]),
+            "home_top_scorer_goals": float(last.get("away_top_scorer_goals", 0.0)),
+        }
 
-    print(f"[model_loader] Loaded model for {competition_code}: {paths['model'].name}")
-    return model, feature_cols, meta
+    # Helper: pega última linha de features em que o time aparece como visitante
+    def _get_away_role_features(team_name: str) -> dict:
+        away_rows = _feature_df[_feature_df["away_team"] == team_name].sort_values("date")
+        if not away_rows.empty:
+            last = away_rows.iloc[-1]
+            return {
+                "away_goals_for_avg": float(last["away_goals_for_avg"]),
+                "away_goals_against_avg": float(last["away_goals_against_avg"]),
+                "away_goal_diff_avg": float(last["away_goal_diff_avg"]),
+                "away_win_rate": float(last["away_win_rate"]),
+                "away_top_scorer_goals": float(last.get("away_top_scorer_goals", 0.0)),
+            }
+
+        home_rows = _feature_df[_feature_df["home_team"] == team_name].sort_values("date")
+        if home_rows.empty:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Nenhum histórico encontrado para o time {team_name}",
+            )
+        last = home_rows.iloc[-1]
+        return {
+            "away_goals_for_avg": float(last["home_goals_for_avg"]),
+            "away_goals_against_avg": float(last["home_goals_against_avg"]),
+            "away_goal_diff_avg": float(last["home_goal_diff_avg"]),
+            "away_win_rate": float(last["home_win_rate"]),
+            "away_top_scorer_goals": float(last.get("home_top_scorer_goals", 0.0)),
+        }
+
+    home_vals = _get_home_role_features(home_team)
+    away_vals = _get_away_role_features(away_team)
+
+    # Monta um DataFrame com as colunas de features na ordem esperada
+    row = {}
+    for col in _feature_cols:
+        if col.startswith("home_") and col in home_vals:
+            row[col] = home_vals[col]
+        elif col.startswith("away_") and col in away_vals:
+            row[col] = away_vals[col]
+        else:
+            # Features que não conseguimos preencher agora (ex: rank),
+            # deixamos neutro (0.0).
+            row[col] = 0.0
+
+    X = pd.DataFrame([row], columns=_feature_cols)
+
+    proba = _model.predict_proba(X)[0]
+    classes = list(_model.classes_)  # e.g. ['A','D','H']
+    prob_map = {cls: float(p) for cls, p in zip(classes, proba)}
+
+    home_p = prob_map.get("H", 0.0)
+    draw_p = prob_map.get("D", 0.0)
+    away_p = prob_map.get("A", 0.0)
+
+    # Normaliza para garantir soma 1
+    total = home_p + draw_p + away_p
+    if total > 0:
+        home_p /= total
+        draw_p /= total
+        away_p /= total
+
+    return PredictionResponse(
+        home_team=home_team,
+        away_team=away_team,
+        home_top_scorer_goals=home_vals.get("home_top_scorer_goals"),
+        away_top_scorer_goals=away_vals.get("away_top_scorer_goals"),
+        probabilities=OutcomeProbs(home=home_p, draw=draw_p, away=away_p),
+    )
 
 
-def fetch_upcoming_matches_df(
-    competition_code: str,
-    season: Optional[int] = None,
-) -> pd.DataFrame:
+# =============================================================================
+# Endpoint: fixtures futuros + previsões (RF + xG)
+# =============================================================================
+
+
+@app.get("/fixtures_with_predictions", response_model=FixturesWithPredictionsResponse)
+def get_fixtures_with_predictions(
+    competition_code: str = Query("PL", description="Competition code, e.g. 'PL'"),
+    season: Optional[int] = Query(
+        None, description="Season year, e.g. 2023. If omitted, current season is used."
+    ),
+):
     """
-    Busca partidas FUTURAS (status SCHEDULED) direto da API.
-    Usa a mesma função base da API, apenas mudando o status.
+    Retorna as partidas futuras (status=SCHEDULED) de uma competição
+    e, para cada fixture, calcula:
+
+    - Probabilidades H/D/A do modelo de classificação (RandomForest)
+    - λ_home / λ_away (expected goals, fake xG)
+    - Probabilidades H/D/A derivadas do modelo Poisson baseado em xG
     """
+    if _model is None or _feature_df is None or not _feature_cols:
+        raise HTTPException(
+            status_code=500,
+            detail="Modelo ou features não carregados. Treine via /train_model primeiro.",
+        )
+
+    # Se a season não vier, usamos a current_season
+    if season is None:
+        season = get_current_season()
+
     try:
-        df = fetch_competition_matches_df(
+        df_fixtures = fetch_competition_matches_df(
             competition_code=competition_code,
             season=season,
             status="SCHEDULED",
         )
     except FootballDataApiError as e:
-        raise HTTPException(status_code=502, detail=str(e))
-
-    if df is None or df.empty:
-        return pd.DataFrame()
-
-    return df
-
-
-@app.on_event("startup")
-def on_startup():
-    print("API iniciada - suporte multi-liga ativo.")
-
-
-# -------------------------------------------------------------------
-# /train_model
-# -------------------------------------------------------------------
-@app.post("/train_model")
-async def train_model(
-    request: Request,
-    competition_code: Optional[str] = Query(None),
-    season: Optional[int] = Query(None),
-    n_games: Optional[int] = Query(5),
-):
-    """
-    Treina (ou re-treina) o modelo para uma liga específica.
-
-    Aceita:
-    - Body JSON: {
-        "competition_code": "BSA",
-        "season": 2025,
-        "n_games": 5
-      }
-    - OU query string:
-        /train_model?competition_code=BSA&season=2025&n_games=5
-    - OU campos alternativos: "competition", "league", "year"
-    """
-    global _LAST_TRAINED_COMP, _TEAMS_BY_COMP
-
-    # tenta ler o body JSON
-    try:
-        body = await request.json()
-        if not isinstance(body, dict):
-            body = {}
-    except Exception:
-        body = {}
-
-    # prioridade: body > querystring
-    comp = (
-        body.get("competition_code")
-        or body.get("competition")
-        or body.get("league")
-        or competition_code
-    )
-    season_val = (
-        body.get("season")
-        or body.get("year")
-        or season
-    )
-
-    # n_games pode vir do body, query ou default
-    n_games_val = int(body.get("n_games") or (n_games if n_games is not None else 5))
-
-    if not comp or season_val is None:
         raise HTTPException(
-            status_code=400,
-            detail="Campos obrigatórios: competition_code e season.",
+            status_code=502,
+            detail=f"Erro ao buscar fixtures na API externa: {e}",
         )
-
-    competition_code = str(comp).upper()
-    season_int = int(season_val)
-
-    print(
-        f"[train_model] Treinando modelo para {competition_code} "
-        f"season {season_int} (n_games={n_games_val})"
-    )
-
-    # buscar somente jogos finalizados
-    try:
-        df_all = fetch_competition_matches_df(
-            competition_code=competition_code,
-            season=season_int,
-            status="FINISHED",
-        )
-    except FootballDataApiError as e:
-        raise HTTPException(status_code=502, detail=str(e))
-
-    if df_all is None or df_all.empty:
+    except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=(
-                f"Nenhum dado de partidas finalizadas encontrado para "
-                f"{competition_code} season {season_int}."
-            ),
+            status_code=502,
+            detail=f"Error fetching fixtures from upstream API: {e}",
         )
 
-    # atualiza lista de times
-    teams = sorted(
-        set(df_all["home_team"].unique()).union(set(df_all["away_team"].unique()))
-    )
-    _TEAMS_BY_COMP[competition_code] = teams
-    _LAST_TRAINED_COMP = competition_code
+    if df_fixtures.empty:
+        return FixturesWithPredictionsResponse(fixtures=[])
 
-    # treina modelo
-    model, acc, report, _, feature_cols = train_match_outcome_model(
-        df_all,
-        n_games=n_games_val,
-    )
+    fixtures_out: List[FixtureWithPrediction] = []
 
-    save_model_bundle(
-        competition_code=competition_code,
-        model=model,
-        feature_cols=feature_cols,
-        n_games=n_games_val,
-        season=season_int,
-    )
-
-    load_model_bundle.cache_clear()
-
-    return {
-        "competition_code": competition_code,
-        "season": season_int,
-        "n_games": n_games_val,
-        "accuracy": float(acc),
-        "n_matches": int(len(df_all)),
-        "n_teams": len(teams),
-        "feature_count": len(feature_cols),
-        "classification_report": report,
-    }
-
-
-# -------------------------------------------------------------------
-# /teams
-# -------------------------------------------------------------------
-@app.get("/teams")
-def get_teams(competition_code: Optional[str] = Query(None)):
-    """
-    Retorna a lista de times da liga.
-    - Se competition_code não for enviado, usa a última liga treinada.
-    Resposta:
-      { "teams": ["Team A", "Team B", ...] }
-    """
-    code = (competition_code or _LAST_TRAINED_COMP or "").upper()
-    if not code:
-        raise HTTPException(
-            status_code=400,
-            detail="competition_code não informado e nenhum modelo treinado ainda.",
-        )
-
-    teams = _TEAMS_BY_COMP.get(code)
-    if not teams:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Nenhum time encontrado para {code}. Treine o modelo primeiro.",
-        )
-
-    return {"competition_code": code, "teams": teams}
-
-
-# -------------------------------------------------------------------
-# Helpers de features para fixtures
-# -------------------------------------------------------------------
-def _build_latest_team_feature_maps(
-    df_all_finished: pd.DataFrame,
-    n_games: int,
-    feature_cols: List[str],
-):
-    """
-    Constrói dois dicionários:
-      - latest_home[team] -> última linha de features quando time jogou em casa
-      - latest_away[team] -> última linha de features quando time jogou fora
-
-    Isso nos permite montar o vetor X para partidas futuras.
-    """
-    feat_df = build_match_feature_table(df_all_finished, n_games=n_games)
-
-    # Garante que temos as colunas necessárias
-    missing = [c for c in feature_cols if c not in feat_df.columns]
-    if missing:
-        print(
-            "[fixtures_with_predictions] Aviso: algumas features do modelo "
-            "não existem em feat_df e serão ignoradas no lookup: ",
-            missing,
-        )
-
-    feat_df = feat_df.sort_values("date")
-
-    latest_home = (
-        feat_df.groupby("home_team", group_keys=False)
-        .tail(1)
-        .set_index("home_team")
-    )
-    latest_away = (
-        feat_df.groupby("away_team", group_keys=False)
-        .tail(1)
-        .set_index("away_team")
-    )
-
-    return latest_home, latest_away
-
-
-# -------------------------------------------------------------------
-# /fixtures_with_predictions
-# -------------------------------------------------------------------
-@app.get("/fixtures_with_predictions")
-def get_fixtures_with_predictions(
-    competition_code: str = Query(..., description="Código da liga, ex: BSA, PL, etc."),
-):
-    """
-    Retorna as partidas futuras da liga + predições de resultado.
-    """
-    # Carrega modelo + metadados
-    model, feature_cols, meta = load_model_bundle(competition_code)
-    n_games = int(meta.get("n_games") or 5)
-    season = meta.get("season")
-
-    # 1) Carrega partidas finalizadas da season correspondente
-    try:
-        df_finished = fetch_competition_matches_df(
-            competition_code=competition_code,
-            season=season,
-            status="FINISHED",
-        )
-    except FootballDataApiError as e:
-        raise HTTPException(status_code=502, detail=str(e))
-
-    if df_finished is None or df_finished.empty:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Nenhum dado de partidas finalizadas encontrado para {competition_code} season {season}.",
-        )
-
-    # 2) Constrói mapas de features mais recentes por time
-    latest_home, latest_away = _build_latest_team_feature_maps(
-        df_finished, n_games=n_games, feature_cols=feature_cols
-    )
-
-    # 3) Carrega fixtures futuros
-    fixtures_df = fetch_upcoming_matches_df(competition_code, season=season)
-    if fixtures_df is None or fixtures_df.empty:
-        return {"competition_code": competition_code, "fixtures": [], "predictions": []}
-
-    predictions = []
-    for _, row in fixtures_df.iterrows():
+    for _, row in df_fixtures.iterrows():
         home_team = row["home_team"]
         away_team = row["away_team"]
 
-        # Recupera última linha de features para cada time
-        home_vals = latest_home.loc[home_team] if home_team in latest_home.index else None
-        away_vals = latest_away.loc[away_team] if away_team in latest_away.index else None
+        subset = _feature_df[
+            (_feature_df["home_team"] == home_team)
+            & (_feature_df["away_team"] == away_team)
+        ].sort_values("date")
 
-        if home_vals is None or away_vals is None:
-            predictions.append(
-                {
-                    "homeTeam": home_team,
-                    "awayTeam": away_team,
-                    "utcDate": row.get("utc_date") or row.get("date"),
-                    "pred": None,
-                    "prob_H": None,
-                    "prob_D": None,
-                    "prob_A": None,
-                    "reason": "Sem histórico suficiente para um dos times.",
-                }
-            )
-            continue
+        if subset.empty:
+            # Fallback: usa último jogo do mandante como mandante + último do visitante como visitante
+            home_rows = _feature_df[_feature_df["home_team"] == home_team].sort_values("date")
+            away_rows = _feature_df[_feature_df["away_team"] == away_team].sort_values("date")
 
-        # Monta vetor X na mesma ordem de feature_cols
-        X_row = {}
-        for col in feature_cols:
-            if col.startswith("home_"):
-                X_row[col] = float(home_vals.get(col, 0.0))
-            elif col.startswith("away_"):
-                X_row[col] = float(away_vals.get(col, 0.0))
-            else:
-                X_row[col] = 0.0
+            if home_rows.empty or away_rows.empty:
+                # não temos histórico suficiente para esse confronto → pula o fixture
+                continue
 
-        X_df = pd.DataFrame([X_row])
+            last_home = home_rows.iloc[-1]
+            last_away = away_rows.iloc[-1]
 
-        proba = model.predict_proba(X_df.values)[0]
-        classes = model.classes_
-        pred_label = classes[proba.argmax()]
+            # Construir uma linha sintética com base nos últimos jogos isolados
+            synthetic = {}
+            for col in _feature_cols:
+                if col.startswith("home_") and col in last_home.index:
+                    synthetic[col] = float(last_home[col])
+                elif col.startswith("away_") and col in last_away.index:
+                    synthetic[col] = float(last_away[col])
+                else:
+                    synthetic[col] = 0.0
+            latest_row = pd.Series(synthetic)
+        else:
+            latest_row = subset.iloc[-1]
 
-        def _get_prob_for(label: str) -> float:
-            if label not in classes:
-                return 0.0
-            idx = list(classes).index(label)
-            return float(proba[idx])
+        # ------------------------------
+        # 1) Probabilidades do modelo RF
+        # ------------------------------
+        X = latest_row[_feature_cols].to_frame().T
+        proba = _model.predict_proba(X)[0]
+        classes = list(_model.classes_)
 
-        predictions.append(
-            {
-                "homeTeam": home_team,
-                "awayTeam": away_team,
-                "utcDate": row.get("utc_date") or row.get("date"),
-                "pred": pred_label,
-                "prob_H": _get_prob_for("H"),
-                "prob_D": _get_prob_for("D"),
-                "prob_A": _get_prob_for("A"),
-            }
+        prob_map = {cls: float(p) for cls, p in zip(classes, proba)}
+        home_p = prob_map.get("H", 0.0)
+        draw_p = prob_map.get("D", 0.0)
+        away_p = prob_map.get("A", 0.0)
+
+        total = home_p + draw_p + away_p
+        if total > 0:
+            home_p /= total
+            draw_p /= total
+            away_p /= total
+
+        # ------------------------------
+        # 2) λ_home / λ_away via xG Ability
+        # ------------------------------
+        home_xg_ability = float(latest_row.get("home_xg_ability", 1.0))
+        away_xg_ability = float(latest_row.get("away_xg_ability", 1.0))
+
+        lambda_home, lambda_away = calibrate_goal_expectancy(
+            home_xg_ability=home_xg_ability,
+            away_xg_ability=away_xg_ability,
+            base_total_goals=2.6,  # pode ser ajustado por liga se quiser
         )
 
-    return {
-        "competition_code": competition_code,
-        "season": season,
-        "n_games": n_games,
-        "fixtures": predictions,
-    }
+        # ------------------------------
+        # 3) Probabilidades H/D/A via Poisson (xG)
+        # ------------------------------
+        xg_probs = match_outcome_probabilities(
+            lambda_home=lambda_home,
+            lambda_away=lambda_away,
+            max_goals=8,
+        )
+
+        xg_home = float(xg_probs["H"])
+        xg_draw = float(xg_probs["D"])
+        xg_away = float(xg_probs["A"])
+
+        fixtures_out.append(
+            FixtureWithPrediction(
+                utc_date=str(row["utc_date"]),
+                match_id=int(row["id"]),
+                competition_code=competition_code,
+                season=int(row.get("season", season)),
+                matchday=int(row.get("matchday") or 0),
+                home_team=home_team,
+                away_team=away_team,
+                home_top_scorer_goals=float(
+                    latest_row.get("home_top_scorer_goals", 0.0)
+                )
+                if not pd.isna(latest_row.get("home_top_scorer_goals", 0.0))
+                else None,
+                away_top_scorer_goals=float(
+                    latest_row.get("away_top_scorer_goals", 0.0)
+                )
+                if not pd.isna(latest_row.get("away_top_scorer_goals", 0.0))
+                else None,
+                probabilities=OutcomeProbs(home=home_p, draw=draw_p, away=away_p),
+                lambda_home=lambda_home,
+                lambda_away=lambda_away,
+                xg_probabilities=OutcomeProbs(home=xg_home, draw=xg_draw, away=xg_away),
+            )
+        )
+
+    return FixturesWithPredictionsResponse(fixtures=fixtures_out)
+
+
+# =============================================================================
+# Endpoint: treinar modelo (multi-liga, multi-temporada)
+# =============================================================================
+
+
+@app.post("/train_model", response_model=TrainResponse)
+def train_model(req: TrainRequest):
+    """
+    Treina o modelo avançado usando N temporadas passadas para uma liga específica
+    (competition_code). Também atualiza o modelo em memória e salva:
+
+    - modelo genérico: MODEL_PATH
+    - feature_cols: FEATURE_COLS_PATH
+
+    Além disso, reconstrói _feature_df usando a mesma lógica de features do
+    modelo avançado (build_dataset), incluindo xG Ability, ranks, etc.
+    """
+    global _model, _feature_cols, _feature_df
+
+    comp = req.competition_code.upper()
+    current_season = req.season if req.season is not None else get_current_season()
+
+    seasons = get_training_seasons(current_season, req.n_past_seasons)
+    print(
+        f"[train_model] Treinando modelo para {comp} usando temporadas: "
+        f"{seasons} (n_games={req.n_games})"
+    )
+
+
+
+    all_dfs = []
+    for s in seasons:
+        print(f"[train_model] Buscando partidas para {comp} season {s}...")
+        try:
+            df_s = fetch_competition_matches_df(
+                competition_code=comp,
+                season=s,
+                status=None,  # pegamos todas as partidas da season
+            )
+            if df_s is None or df_s.empty:
+                print(f"[train_model] Nenhuma partida retornada para {comp} {s}.")
+                continue
+            all_dfs.append(df_s)
+        except FootballDataApiError as e:
+            print(f"[train_model] Erro na API para {comp} {s}: {e}")
+            continue
+
+    if not all_dfs:
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                f"Nenhuma partida encontrada nas seasons {seasons} para {comp}. "
+                "Verifique o subscription da API ou o competition_code."
+            ),
+        )
+
+    df_train = pd.concat(all_dfs, ignore_index=True)
+    print(f"[train_model] Dataset de treino combinado shape={df_train.shape}")
+
+    # Treina o modelo avançado
+    model, acc, report, _, feature_cols = train_match_outcome_model(
+        df_train, n_games=req.n_games
+    )
+
+    print("[train_model] Classification report (holdout):")
+    print(report)
+
+    # Atualiza globais
+    _model = model
+    _feature_cols = feature_cols
+
+    # Salva modelo genérico (último treinado) + feature cols
+    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+    dump(_model, MODEL_PATH)
+    print(f"[train_model] Modelo salvo em {MODEL_PATH}")
+
+    with open(FEATURE_COLS_PATH, "w", encoding="utf-8") as f:
+        for c in _feature_cols:
+            f.write(c + "\n")
+    print(f"[train_model] Feature cols salvas em {FEATURE_COLS_PATH}")
+
+    # Reconstrói _feature_df com a MESMA lógica do advanced_model (incluindo xG)
+    _, _, feat_df, _ = build_dataset(df_train, n_games=req.n_games)
+    _feature_df = feat_df
+    print(f"[train_model] Feature table reconstruída (build_dataset), shape={_feature_df.shape}")
+
+    # Também salvamos um modelo específico por liga/season atual (opcional)
+    league_model_path = f"models/train_league_{comp.lower()}_{current_season}.joblib"
+    dump(_model, league_model_path)
+    print(f"[train_model] Modelo específico da liga salvo em {league_model_path}")
+
+    return TrainResponse(
+        message="Modelo treinado com sucesso",
+        competition_code=comp,
+        seasons_used=seasons,
+        n_games=req.n_games,
+        accuracy=float(acc),
+        model_path=MODEL_PATH,
+        feature_cols_path=FEATURE_COLS_PATH,
+    )
