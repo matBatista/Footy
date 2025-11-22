@@ -7,12 +7,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from joblib import load, dump
 
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 from src.data_loader import load_matches, get_data_path
 from src.features import build_match_feature_table
 from src.football_data_api import fetch_competition_matches_df, FootballDataApiError
 from src.advanced_model import train_match_outcome_model, build_dataset
 from src.season_utils import get_current_season, get_training_seasons
-from src.xg_utils import calibrate_goal_expectancy, match_outcome_probabilities
+
+from src.xg_utils import (
+    calibrate_goal_expectancy,
+    match_outcome_probabilities,  # se ainda estiver usando em outros lugares
+    build_xg_context_from_feature_df,
+    compute_match_lambdas,
+    poisson_outcome_probs,
+)
 
 
 # =============================================================================
@@ -41,7 +52,7 @@ class TrainRequest(BaseModel):
     competition_code: str  # e.g., "PL", "BSA"
     season: Optional[int] = None  # se None, usamos get_current_season
     n_past_seasons: int = 3
-    n_games: int = 10
+    n_games: int = 5
 
 
 class OutcomeProbs(BaseModel):
@@ -104,10 +115,10 @@ app = FastAPI(
     version="0.3.0",
 )
 
+# CORS: libera tudo em dev (incluindo origin "null")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # em produção restringir
-    # allow_credentials=True,
+    allow_origins=["*"],          # ok porque allow_credentials=False
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -350,7 +361,7 @@ def get_fixtures_with_predictions(
     e, para cada fixture, calcula:
 
     - Probabilidades H/D/A do modelo de classificação (RandomForest)
-    - λ_home / λ_away (expected goals, fake xG)
+    - λ_home / λ_away (expected goals, xG)
     - Probabilidades H/D/A derivadas do modelo Poisson baseado em xG
     """
     if _model is None or _feature_df is None or not _feature_cols:
@@ -383,6 +394,11 @@ def get_fixtures_with_predictions(
     if df_fixtures.empty:
         return FixturesWithPredictionsResponse(fixtures=[])
 
+    # ---------------------------------------------------------------
+    # Contexto de xG global calculado UMA vez, a partir de _feature_df
+    # ---------------------------------------------------------------
+    xg_ctx = build_xg_context_from_feature_df(_feature_df)
+
     fixtures_out: List[FixtureWithPrediction] = []
 
     for _, row in df_fixtures.iterrows():
@@ -395,26 +411,33 @@ def get_fixtures_with_predictions(
         ].sort_values("date")
 
         if subset.empty:
-            # Fallback: usa último jogo do mandante como mandante + último do visitante como visitante
+            # Fallback: usa último jogo do mandante como mandante + último do visitante como visitante.
+            # Se um dos times (ou ambos) não tiver histórico, usamos valores neutros (0.0) em vez de pular o fixture.
             home_rows = _feature_df[_feature_df["home_team"] == home_team].sort_values("date")
             away_rows = _feature_df[_feature_df["away_team"] == away_team].sort_values("date")
 
-            if home_rows.empty or away_rows.empty:
-                # não temos histórico suficiente para esse confronto → pula o fixture
-                continue
+            last_home = home_rows.iloc[-1] if not home_rows.empty else None
+            last_away = away_rows.iloc[-1] if not away_rows.empty else None
 
-            last_home = home_rows.iloc[-1]
-            last_away = away_rows.iloc[-1]
-
-            # Construir uma linha sintética com base nos últimos jogos isolados
+            # Construir uma linha sintética com base nos últimos jogos isolados quando existirem;
+            # caso contrário, preenchendo com valores neutros (0.0). Assim não perdemos jogos
+            # de times recém‑promovidos, apenas marcamos features mais "fracas".
             synthetic = {}
             for col in _feature_cols:
-                if col.startswith("home_") and col in last_home.index:
-                    synthetic[col] = float(last_home[col])
-                elif col.startswith("away_") and col in last_away.index:
-                    synthetic[col] = float(last_away[col])
+                if col.startswith("home_"):
+                    if last_home is not None and col in last_home.index:
+                        synthetic[col] = float(last_home[col])
+                    else:
+                        synthetic[col] = 0.0
+                elif col.startswith("away_"):
+                    if last_away is not None and col in last_away.index:
+                        synthetic[col] = float(last_away[col])
+                    else:
+                        synthetic[col] = 0.0
                 else:
+                    # features que não são home_/away_ (ex.: rank_diff) podem ficar neutras
                     synthetic[col] = 0.0
+
             latest_row = pd.Series(synthetic)
         else:
             latest_row = subset.iloc[-1]
@@ -437,35 +460,62 @@ def get_fixtures_with_predictions(
             draw_p /= total
             away_p /= total
 
-        # ------------------------------
-        # 2) λ_home / λ_away via xG Ability
-        # ------------------------------
-        home_xg_ability = float(latest_row.get("home_xg_ability", 1.0))
-        away_xg_ability = float(latest_row.get("away_xg_ability", 1.0))
+        # ==========================================================================================
+        # 2) λ_home / λ_away — cálculo via xG REAL usando feature_df + Poisson
+        # ==========================================================================================
+        lambda_home = 0.0
+        lambda_away = 0.0
+        p_home_xg = 0.0
+        p_draw_xg = 0.0
+        p_away_xg = 0.0
 
-        lambda_home, lambda_away = calibrate_goal_expectancy(
-            home_xg_ability=home_xg_ability,
-            away_xg_ability=away_xg_ability,
-            base_total_goals=2.6,  # pode ser ajustado por liga se quiser
-        )
+        if xg_ctx is not None:
+            lh, la = compute_match_lambdas(home_team, away_team, xg_ctx)
+            if lh is not None and la is not None:
+                lambda_home = float(lh)
+                lambda_away = float(la)
+                p_home_xg, p_draw_xg, p_away_xg = poisson_outcome_probs(lambda_home, lambda_away)
+        
+        
 
-        # ------------------------------
-        # 3) Probabilidades H/D/A via Poisson (xG)
-        # ------------------------------
-        xg_probs = match_outcome_probabilities(
-            lambda_home=lambda_home,
-            lambda_away=lambda_away,
-            max_goals=8,
-        )
+        # ==========================================================================================
+        # 3) Monta o objeto de resposta para o fixture
+        # ==========================================================================================
 
-        xg_home = float(xg_probs["H"])
-        xg_draw = float(xg_probs["D"])
-        xg_away = float(xg_probs["A"])
+        # Descobrir o campo de ID do jogo vindo da API
+        if "id" in row.index:
+            match_id_val = row["id"]
+        elif "match_id" in row.index:
+            match_id_val = row["match_id"]
+        elif "matchId" in row.index:
+            match_id_val = row["matchId"]
+        else:
+            match_id_val = None
+
+        if pd.isna(match_id_val):
+            match_id_val = None
+
+        match_id_int = int(match_id_val) if match_id_val is not None else -1
+
+         # Descobrir o campo de data vindo da API (utc_date / utcDate / date)
+        if "utc_date" in row.index:
+           utc_date_val = row["utc_date"]
+        elif "utcDate" in row.index:
+           utc_date_val = row["utcDate"]
+        elif "date" in row.index:
+           utc_date_val = row["date"]
+        else:
+           utc_date_val = None
+
+        if pd.isna(utc_date_val):
+           utc_date_val = None
+
+        utc_date_str = str(utc_date_val) if utc_date_val is not None else ""
 
         fixtures_out.append(
             FixtureWithPrediction(
-                utc_date=str(row["utc_date"]),
-                match_id=int(row["id"]),
+                utc_date=utc_date_str,
+                match_id=match_id_int,
                 competition_code=competition_code,
                 season=int(row.get("season", season)),
                 matchday=int(row.get("matchday") or 0),
@@ -484,7 +534,11 @@ def get_fixtures_with_predictions(
                 probabilities=OutcomeProbs(home=home_p, draw=draw_p, away=away_p),
                 lambda_home=lambda_home,
                 lambda_away=lambda_away,
-                xg_probabilities=OutcomeProbs(home=xg_home, draw=xg_draw, away=xg_away),
+                xg_probabilities=OutcomeProbs(
+                    home=p_home_xg,
+                    draw=p_draw_xg,
+                    away=p_away_xg,
+                ),
             )
         )
 
